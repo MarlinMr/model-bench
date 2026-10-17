@@ -1,9 +1,16 @@
-# model-bench
+# Dynamic Bob Ross Canvas Simulation for model benchmark
 
-Repo to simply test what a model can create from a single prompt
+An interactive, self-contained HTML canvas simulation featuring a dynamic landscape in the style of Bob Ross. The scene paints itself sequentially on startup and animates with moving water, flying birds, and gentle wind effects.
+
+## Live Demo
+Check out the live page here: https://marlinmr.github.io/model-bench/
+
+## Features
+- **Sequential Painting:** Renders background, mountains, trees, and foreground elements step-by-step upon load.
+- **Dynamic Elements:** Flowing water, drifting clouds, fluttering leaves, and flying birds.
+- **Single File Build:** Completely self-contained HTML, CSS, and JS.
 
 Prompt used: 
-
 
 >I want a web page that is self-contained inside a single HTML file. The entire purpose of the page is to display an animated simulation.
 
