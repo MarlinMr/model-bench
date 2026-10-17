@@ -103,6 +103,37 @@
       margin-top: 0.75rem;
       color: var(--text-muted);
     }
+
+    .info {
+      background: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .info h2 {
+      color: var(--accent);
+      font-size: 1.4rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .info p + p, .info ul {
+      margin-top: 1rem;
+    }
+
+    .info ul {
+      padding-left: 1.25rem;
+    }
+
+    .info li + li {
+      margin-top: 0.5rem;
+    }
+
+    blockquote {
+      border-left: 3px solid var(--accent);
+      padding-left: 1.25rem;
+    }
   </style>
 </head>
 <body>
@@ -112,9 +143,32 @@
     <p>Compare simulations made from the same prompt, with their creators hidden.</p>
   </header>
 
-  <main class="blind-comparison" aria-label="Blind comparison">
-    <a href="./viewer.html" class="btn">🎲 Random page</a>
-    <p>Compare a randomly selected simulation with its model name hidden.</p>
+  <main>
+    <section class="blind-comparison" aria-label="Blind comparison">
+      <a href="./viewer.html" class="btn">🎲 Random page</a>
+      <p>Compare a randomly selected simulation with its model name hidden.</p>
+    </section>
+
+    <section class="info" aria-labelledby="about-heading">
+      <h2 id="about-heading">About this comparison</h2>
+      <p>Different AI models were given the same prompt: create a living, painterly landscape in a single HTML file. This blind comparison lets you judge the results on their appearance and behavior before knowing who made them.</p>
+      <ul>
+        <li><strong>Start with Random page.</strong> Watch the scene paint itself, then spend a little time with the finished animation. Try any controls included in the simulation.</li>
+        <li><strong>Compare the experience.</strong> Look at composition, painterly detail, natural movement, the startup painting sequence, and how closely the result follows the prompt.</li>
+        <li><strong>Try another result.</strong> The viewer's Random page button opens another simulation, avoiding an immediate repeat when more than one is available.</li>
+        <li><strong>Keep it blind.</strong> Model names and original filenames are hidden behind anonymous URLs. The banner shows only file size and line count; these describe the output, not its quality.</li>
+      </ul>
+    </section>
+
+    <section class="info" aria-labelledby="prompt-heading">
+      <h2 id="prompt-heading">The prompt used</h2>
+      <blockquote>
+        <p>I want a web page that is self-contained inside a single HTML file. The entire purpose of the page is to display an animated simulation.</p>
+        <p>The simulation features a picture frame containing a landscape in the signature painterly style of Bob Ross. Instead of a static image, it is a dynamic, living scene: gentle wind rustles trees, birds fly across the sky, water flows in a stream, clouds drift, and other subtle elements move naturally. The focus should be on art, beauty, and atmosphere rather than strict physical accuracy.</p>
+        <p>Additionally, elements within the frame should be painted sequentially upon startup—revealing background, mountains, trees, and foreground details one by one as if the artwork is being created live on canvas.</p>
+        <p>Construct the complete, self-contained HTML file based on these instructions.</p>
+      </blockquote>
+    </section>
   </main>
 
 </body>
