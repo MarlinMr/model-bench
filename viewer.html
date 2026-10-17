@@ -35,16 +35,17 @@
     }
     button:hover { background: #e5b869; }
     button:disabled { opacity: 0.6; cursor: default; }
-    #status { margin: 0; color: #b5becb; }
+    #status, #metadata { margin: 0; color: #b5becb; }
     iframe { flex: 1; width: 100%; min-height: 0; border: 0; background: white; }
     iframe[hidden] { display: none; }
   </style>
 </head>
 <body>
   <header>
-    <a href="./index.html">← Showcase</a>
+    <a href="./index.html">← Blind comparison</a>
     <button id="random" type="button" disabled>🎲 Random page</button>
     <p id="status" role="status">Loading simulations…</p>
+    <p id="metadata" aria-live="polite"></p>
   </header>
   <iframe id="simulation" title="Anonymous simulation" sandbox="allow-scripts" hidden></iframe>
   <noscript>Enable JavaScript to select a random simulation.</noscript>
@@ -52,21 +53,26 @@
     const button = document.getElementById('random');
     const status = document.getElementById('status');
     const frame = document.getElementById('simulation');
+    const metadata = document.getElementById('metadata');
     let pages = [];
     let current = null;
 
-    function showPage(token) {
-      current = token;
-      history.replaceState(null, '', `#${token}`);
+    function showPage(page) {
+      current = page.id;
+      history.replaceState(null, '', `#${page.id}`);
       frame.hidden = false;
-      frame.src = `./anonymous/${token}.html`;
+      frame.src = `./anonymous/${page.id}.html`;
+      const size = page.bytes < 1024
+        ? `${page.bytes.toLocaleString()} bytes`
+        : `${(page.bytes / 1024).toFixed(1)} KiB (${page.bytes.toLocaleString()} bytes)`;
+      metadata.textContent = `HTML · ${size} · ${page.lines.toLocaleString()} lines`;
       status.textContent = pages.length === 1
         ? 'Model hidden · Only one simulation available'
         : 'Model hidden · Choose another page to compare';
     }
 
     function randomPage() {
-      const choices = pages.filter(token => token !== current);
+      const choices = pages.filter(page => page.id !== current);
       if (!choices.length) {
         showPage(pages[0]);
         return;
@@ -85,17 +91,20 @@
         const response = await fetch('./pages.json', { cache: 'no-store' });
         if (!response.ok) throw new Error('Could not load simulations');
         const manifest = await response.json();
-        if (!Array.isArray(manifest) || !manifest.every(token =>
-          typeof token === 'string' && /^[a-f0-9]{32}$/.test(token))) {
+        if (!Array.isArray(manifest) || !manifest.every(page =>
+          page && typeof page.id === 'string' && /^[a-f0-9]{32}$/.test(page.id) &&
+          Number.isSafeInteger(page.bytes) && page.bytes >= 0 &&
+          Number.isSafeInteger(page.lines) && page.lines >= 0)) {
           throw new Error('Invalid simulation list');
         }
-        pages = [...new Set(manifest)];
+        pages = [...new Map(manifest.map(page => [page.id, page])).values()];
         if (!pages.length) {
           status.textContent = 'No simulations available yet.';
           return;
         }
         const requested = location.hash.slice(1);
-        if (pages.includes(requested)) showPage(requested);
+        const selected = pages.find(page => page.id === requested);
+        if (selected) showPage(selected);
         else randomPage();
         button.disabled = false;
       } catch (error) {

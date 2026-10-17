@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#e9e5dc">
+<title>A Little Wilderness — A Living Painting</title>
+<style>
+  :root { color-scheme: light; --ink: #41443b; --muted: #85877b; --paper: #eeece5; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100svh; background: var(--paper); color: var(--ink); font-family: Georgia, 'Times New Roman', serif; }
+  body::before { content: ''; position: fixed; inset: 0; pointer-events: none; opacity: .25; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%239b9480' opacity='.23' filter='url(%23n)' d='M0 0h180v180H0z'/%3E%3C/svg%3E"); }
+  main { width: min(1120px, 91vw); margin: 0 auto; padding: 36px 0 28px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin: 0 3px 27px; }
+  .wordmark, .edition, .eyebrow, button, .chapter, .time, footer { font-family: 'Trebuchet MS', Arial, sans-serif; }
+  .wordmark { font-size: 11px; letter-spacing: .25em; text-transform: uppercase; display: flex; align-items: center; gap: 12px; }
+  .mark { width: 26px; height: 26px; color: #737b61; }
+  .edition { color: var(--muted); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+  .frame { padding: 13px; background: linear-gradient(125deg,#6b5737,#ae9564 15%,#665035 35%,#a38b5c 60%,#52412d); box-shadow: 0 22px 35px -18px #30281770, 0 3px 7px #382d2630, inset 0 0 0 1px #57432a; position: relative; }
+  .frame::before { content: ''; position: absolute; inset: 4px; border: 1px solid #d0b78080; box-shadow: inset 0 0 0 2px #3d302b60; pointer-events: none; }
+  .mat { padding: clamp(10px, 2.5vw, 31px); background: #e7e2d4; box-shadow: inset 0 0 8px #34291945; }
+  .canvas-wrap { position: relative; background: #dbd9c8; box-shadow: 0 0 0 1px #9c9683, 0 0 0 3px #c9c2ad, inset 0 0 12px #0005; overflow: hidden; aspect-ratio: 3 / 2; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .canvas-wrap::after { content:''; position:absolute; inset:0; box-shadow:inset 0 0 13px #20291e33; pointer-events:none; }
+  .description { text-align: center; margin-top: 29px; }
+  .eyebrow { color: #8a8c7c; text-transform: uppercase; letter-spacing: .26em; font-size: 9px; margin: 0 0 10px; }
+  h1 { font-size: clamp(26px, 3.5vw, 38px); font-weight: normal; letter-spacing: -.035em; margin: 0 0 9px; }
+  .subtitle { font-size: 14px; color: #7b7d70; margin: 0; font-style: italic; }
+  .controls { width: min(500px, 100%); margin: 25px auto 0; }
+  .control-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 11px; }
+  .chapter { font-size: 10px; color: #777d69; letter-spacing: .08em; }
+  .chapter::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: #869175; vertical-align: 1px; margin-right: 8px; }
+  .buttons { display: flex; gap: 17px; flex-shrink: 0; }
+  button { display: flex; align-items: center; gap: 6px; border: 0; background: transparent; padding: 5px 0; color: #686d5f; font-size: 10px; cursor: pointer; white-space: nowrap; }
+  button:hover { color: #252e23; }
+  button:focus-visible { outline: 2px solid #69775b; outline-offset: 5px; border-radius: 2px; }
+  button svg { width: 12px; height: 12px; }
+  .track { background: #d9dbcf; height: 2px; border-radius: 2px; overflow: hidden; }
+  .progress { width: 0; height: 100%; background: #818d70; }
+  footer { text-align: center; font-size: 9px; color: #96988b; letter-spacing: .09em; margin-top: 23px; }
+  @media(min-width:1400px) { main { width: min(1120px, 84vw); } }
+  @media(max-width:600px) { main { width: 94vw; padding-top: 21px; } header { margin-bottom: 20px; } .edition { font-size: 8px; letter-spacing: .06em; } .wordmark { font-size: 9px; gap: 7px; } .frame { padding: 8px; } .frame::before { inset: 2px; } .description { margin-top: 26px; } .subtitle { font-size: 12px; } .controls { width: 88%; } footer { font-size: 8px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="wordmark"><svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M3 25 13 7l6 11 3-5 8 12H3Z" stroke="currentColor" stroke-width="1.2"/><path d="m9 14 4 2 3-3M18 20l4-2 3 2" stroke="currentColor" stroke-width="1.2"/><circle cx="24" cy="7" r="2.5" stroke="currentColor"/></svg>Still / Life</div>
+    <span class="edition">No. 001 &nbsp; / &nbsp; An endless afternoon</span>
+  </header>
+  <section class="frame" aria-label="A framed, animated oil-painting-style landscape">
+    <div class="mat"><div class="canvas-wrap"><canvas id="painting" width="1440" height="960" role="img" aria-label="A living mountain landscape: snowy peaks above an alpine lake, evergreen trees in a soft breeze, a flowing stream, drifting clouds, and birds. The landscape is painted into view in successive brushstrokes.">An animated alpine landscape with mountains, evergreens, a lake, and a stream.</canvas></div></div>
+  </section>
+  <section class="description">
+    <p class="eyebrow">A living canvas</p>
+    <h1>A Little Wilderness</h1>
+    <p class="subtitle">A few happy trees. A little mountain air. A world of your own.</p>
+  </section>
+  <div class="controls">
+    <div class="control-row">
+      <span class="chapter" id="chapter" aria-live="polite">Preparing the canvas</span>
+      <div class="buttons">
+        <button id="pause" type="button" aria-label="Pause animation"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4 3h3v10H4zm5 0h3v10H9z"/></svg><span>Pause</span></button>
+        <button id="replay" type="button" aria-label="Paint the landscape again"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M3 6a5.5 5.5 0 1 1 0 5M3 2v4h4"/></svg>Paint again</button>
+      </div>
+    </div>
+    <div class="track" role="progressbar" aria-label="Painting progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress" id="progress"></div></div>
+  </div>
+  <footer>Painted with code &nbsp; · &nbsp; Take a breath. Stay a while.</footer>
+</main>
+<script>
+(() => {
+  'use strict';
+  const canvas = document.getElementById('painting'), ctx = canvas.getContext('2d');
+  const W = 1440, H = 960, TAU = Math.PI * 2;
+  let seed = 92831;
+  const rand = () => { seed = (Math.imul(1664525, seed) + 1013904223) >>> 0; return seed / 4294967296; };
+  const range = (a, b) => a + rand() * (b - a);
+  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+  const make = (w = W, h = H) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+  function poly(c, points, color) { c.fillStyle = color; c.beginPath(); points.forEach(([x,y], i) => i ? c.lineTo(x,y) : c.moveTo(x,y)); c.closePath(); c.fill(); }
+  function line(c, x, y, x2, y2, color, width = 1) { c.strokeStyle = color; c.lineWidth = width; c.beginPath(); c.moveTo(x,y); c.lineTo(x2,y2); c.stroke(); }
+  function oval(c, x, y, rx, ry, color) { c.fillStyle = color; c.beginPath(); c.ellipse(x,y,Math.max(.1,rx),Math.max(.1,ry),0,0,TAU); c.fill(); }
+  function gradient(c, y, y2, stops) { const g = c.createLinearGradient(0,y,0,y2); stops.forEach(([p,col]) => g.addColorStop(p,col)); return g; }
+  const layers = [];
+  function layer(name, start, duration, bounds, paint) { const image = make(); paint(image.getContext('2d')); const item = { name, start, duration, bounds, image }; layers.push(item); return item; }
+
+  // A dry, warm ground remains visible between the strokes of oil paint.
+  const ground = make(), gc = ground.getContext('2d');
+  gc.fillStyle = '#d9d7c5'; gc.fillRect(0,0,W,H);
+  for (let i=0;i<41000;i++) { const v = rand() > .5 ? 'rgba(255,255,234,.12)' : 'rgba(83,77,53,.055)'; gc.fillStyle=v; gc.fillRect(rand()*W,rand()*H,range(.5,2),range(.5,2)); }
+
+  const sky = layer('Washing in the afternoon sky', 0, 4.8, [0,0,W,620], c => {
+    c.fillStyle = gradient(c,0,660,[[0,'#789da7'],[.42,'#b2c5c1'],[.76,'#dcdcc6'],[1,'#e5ddbd']]); c.fillRect(0,0,W,660);
+    for(let i=0;i<5500;i++) { const x=rand()*W,y=rand()*650; oval(c,x,y,range(4,35),range(.4,2.1),rand()>.5?'rgba(241,235,205,.033)':'rgba(68,111,130,.025)'); }
+    const glow = c.createRadialGradient(1010,220,5,1010,220,390); glow.addColorStop(0,'#fff1cf60'); glow.addColorStop(1,'#fff1cf00'); c.fillStyle=glow; c.fillRect(0,0,W,650);
+  });
+
+  // Each cloud is a softly scumbled, independent little paint layer.
+  const clouds = [];
+  for(let j=0;j<6;j++) {
+    const im=make(540,175), c=im.getContext('2d');
+    for(let i=0;i<165;i++) { const x=range(60,475), env=Math.sin((x-60)/415*Math.PI); const y=105-range(0,55)*env; oval(c,x,y,range(20,64),range(5,20),i<60?'rgba(137,160,163,.045)':'rgba(248,240,213,.065)'); }
+    clouds.push({image:im,x:range(-200,1280),y:range(15,195),speed:range(2,5),alpha:range(.55,.95)});
+  }
+
+  layer('Finding the distant blue ridges', 3.8, 3.6, [0,235,W,370], c => {
+    poly(c,[[0,420],[90,380],[145,390],[220,331],[266,351],[340,289],[407,357],[480,326],[560,387],[652,331],[719,387],[780,349],[860,390],[934,309],[1008,363],[1090,298],[1170,361],[1232,339],[1310,380],[1440,330],[1440,590],[0,590]],'#8b9f9e');
+    poly(c,[[0,462],[90,418],[176,457],[280,386],[370,434],[480,385],[563,429],[644,396],[750,465],[840,405],[935,433],[1050,387],[1160,420],[1260,390],[1360,442],[1440,421],[1440,600],[0,600]],'#84968e');
+    for(let i=0;i<1800;i++){const x=rand()*W,y=range(430,590); line(c,x,y,x+range(5,40),y-range(2,12),'rgba(192,198,168,.045)',range(1,3));}
+  });
+
+  const mountainOutline=[[195,535],[270,461],[342,388],[395,355],[434,299],[474,319],[556,205],[587,232],[619,283],[654,263],[702,320],[747,359],[788,401],[854,421],[935,516]];
+  layer('A little snow on the mountains', 6.5, 4.8, [180,195,810,395], c => {
+    poly(c,[...mountainOutline,[935,590],[195,590]],'#657d82');
+    poly(c,[[556,205],[587,232],[619,283],[654,263],[702,320],[747,359],[788,401],[854,421],[935,516],[700,492],[655,420],[602,369],[583,299]],'#58717a');
+    poly(c,[[556,205],[537,270],[505,300],[485,348],[452,365],[431,410],[395,439],[355,493],[292,511],[342,426],[395,355],[434,299],[474,319]],'#e0e4d9');
+    poly(c,[[556,205],[569,262],[598,288],[582,290],[606,325],[574,314],[546,273],[515,321],[493,337],[520,275]],'#f1ebd6');
+    poly(c,[[654,263],[673,317],[704,341],[727,373],[693,355],[672,331],[640,312],[614,332]],'#bcccd0');
+    poly(c,[[434,299],[442,341],[467,356],[447,355],[421,380],[410,415],[393,427],[402,376],[414,345]],'#f0eddb');
+    poly(c,[[474,319],[482,352],[513,378],[495,372],[478,349],[450,390],[431,398]],'#b5c6c6');
+    c.save(); c.beginPath(); mountainOutline.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y)); c.lineTo(935,590);c.lineTo(195,590);c.closePath(); c.clip();
+    const colors=['#dce1d5','#aebfc0','#f0ebd8','#90a6ab','#516c76','#c5d0c9'];
+    for(let i=0;i<4400;i++) { const x=range(250,890),y=range(235,553); const side=x < 555-(y-205)*.57; c.globalAlpha=range(.06,.3); line(c,x,y,x-range(2,14),y+range(2,16),side?colors[Math.floor(rand()*4)]:colors[3+Math.floor(rand()*3)],range(.5,3)); }
+    c.restore();
+    c.fillStyle=gradient(c,465,595,[[0,'#b4bba300'],[1,'#b4bba3']]);c.fillRect(160,460,830,135);
+  });
+
+  function pine(c,x,y,h,colors,detail=1) {
+    const w=h*range(.19,.26);
+    line(c,x,y,x-h*.016,y-h,'#494d35',Math.max(1,h*.018));
+    for(let n=0;n<Math.floor(h*.34*detail);n++) {
+      const p=n/(h*.34*detail), yy=y-h+p*h, breadth=w*Math.pow(p,.8), xx=x+Math.sin(p*19)*h*.012;
+      const col=colors[Math.floor(rand()*colors.length)];
+      const l=breadth*range(.5,1.1), r=breadth*range(.5,1.1);
+      poly(c,[[xx,yy-h*.045],[xx-l,yy+range(0,h*.045)],[xx-l*.65,yy+range(.02,.055)*h],[xx,yy+h*.018],[xx+r*.78,yy+h*.05],[xx+r,yy+h*.016]],col);
+      if(n%3===0)line(c,xx,yy,xx-l*.7,yy+h*.025,colors[colors.length-1],Math.max(.6,h*.005));
+      // Broken bristle marks soften the branch silhouettes into feathery foliage.
+      for(let k=0;k<9;k++) {
+        const side=k%2?-1:1, reach=side<0?l:r, along=range(.18,1.04);
+        const bx=xx+side*reach*along, by=yy+along*h*.026+range(-.013,.025)*h;
+        line(c,bx,by,bx+side*range(.005,.026)*h,by-range(.008,.028)*h,colors[Math.floor(rand()*colors.length)],Math.max(.7,h*range(.002,.006)));
+      }
+    }
+  }
+  layer('Evergreens in the soft distance', 10, 3.9, [0,370,W,275], c => {
+    poly(c,[[0,502],[150,495],[270,530],[430,515],[550,542],[720,510],[900,534],[1080,483],[1280,470],[1440,500],[1440,640],[0,640]],'#728577');
+    for(let i=0;i<210;i++) { const x=i*7+range(-5,5), y=563+Math.sin(x*.013)*16; pine(c,x,y,range(37,104),['#70877d','#6e8478','#7c8f7e','#8f9e86'],.7); }
+    for(let i=0;i<120;i++) {const x=rand()*W;pine(c,x,range(580,613),range(38,91),['#536f62','#5c7868','#6d846c','#88977a'],.8);}
+    c.fillStyle=gradient(c,550,640,[[0,'#c7ccad00'],[.55,'#c7ccad65'],[1,'#c7ccad05']]); c.fillRect(0,550,W,90);
+  });
+
+  const water = layer('Letting the water find its way', 13, 4.1, [0,575,W,385], c => {
+    c.fillStyle=gradient(c,575,H,[[0,'#9cafa0'],[.25,'#a5b9aa'],[.55,'#7f9f98'],[1,'#b8c4ae']]);c.fillRect(0,575,W,H-575);
+    for(let i=0;i<4700;i++) {
+      const y=range(580,H), x=rand()*W, width=range(5,62)*( .3+(y-580)/380 );
+      line(c,x,y,x+width,y+range(-.6,.6),['#e1ddbb3b','#d4d8bc38','#507c7940','#4c716b30','#f1e6c332'][Math.floor(rand()*5)],range(.5,2.3));
+    }
+    // Broken, vertical reflections beneath the forest.
+    for(let i=0;i<950;i++){const x=rand()*W,y=range(580,710); line(c,x,y,x+range(2,19),y,'rgba(53,83,66,'+((1-(y-580)/130)*.17)+')',range(1,3));}
+    const light=c.createRadialGradient(915,650,5,915,650,420);light.addColorStop(0,'#f1e7bf30');light.addColorStop(1,'#e8dfb900');c.fillStyle=light;c.fillRect(0,575,W,385);
+  });
+
+  function stippleLand(c, points, base, count, bounds, colors) {
+    poly(c,points,base); c.save(); c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();c.clip();
+    for(let i=0;i<count;i++){const x=range(bounds[0],bounds[2]),y=range(bounds[1],bounds[3]);oval(c,x,y,range(1,10),range(.6,3),colors[Math.floor(rand()*colors.length)]);}
+    c.restore();
+  }
+  const leftBank=[[0,596],[131,595],[219,619],[288,645],[384,667],[497,680],[593,704],[628,728],[597,754],[480,777],[389,810],[385,842],[447,870],[517,905],[526,960],[0,960]];
+  const rightBank=[[1440,565],[1310,577],[1182,612],[1114,646],[1015,672],[950,705],[846,740],[788,776],[784,799],[870,823],[954,850],[979,894],[956,960],[1440,960]];
+  layer('Mossy banks and quiet little places', 16, 4.2, [0,560,W,400], c => {
+    stippleLand(c,leftBank,'#3c5942',6500,[0,590,635,960],['#62744a','#7c8650','#3e5b3b','#526a41','#92925a','#b1a46a','#324d3c']);
+    stippleLand(c,rightBank,'#3b5440',6500,[780,565,1440,960],['#657c4c','#71814b','#465e3c','#314d3c','#8d9258','#ad9e62']);
+    const banks=[[[0,596],[131,595],[219,619],[288,645],[384,667],[497,680],[593,704],[628,728],[597,754],[480,777],[389,810],[385,842],[447,870],[517,905],[526,960]],[[1440,565],[1310,577],[1182,612],[1114,646],[1015,672],[950,705],[846,740],[788,776],[784,799],[870,823],[954,850],[979,894],[956,960]]];
+    banks.forEach(points=>{for(let j=0;j<points.length-1;j++){const [x,y]=points[j],[x2,y2]=points[j+1];line(c,x,y+4,x2,y2+4,'#3c5042',8);line(c,x,y-1,x2,y2-1,'#a49c65',3);}});
+    // A little cascade where the stream slips over a rocky shelf.
+    poly(c,[[593,754],[654,760],[722,747],[801,764],[785,789],[721,777],[666,789],[596,775]],'#5c7164');
+    for(let i=0;i<240;i++){const x=range(599,790),y=766+Math.sin(x*.05)*7+range(-5,13);line(c,x,y,x+range(-3,3),y+range(1,13),['#d6dcc3aa','#eff0d7aa','#9faf9a'][Math.floor(rand()*3)],range(.5,2.4));}
+  });
+
+  const trees=[];
+  function tree(x,y,h,palette) {
+    const width=Math.ceil(h*.7),height=Math.ceil(h+25), image=make(width,height), c=image.getContext('2d');
+    pine(c,width/2,height-10,h,palette,1.2); trees.push({image,x,y,h,w:width,ih:height,phase:rand()*TAU});
+  }
+  [[80,685,365],[155,693,295],[38,728,270],[259,674,205],[312,692,165],[1266,665,338],[1366,711,439],[1189,678,255],[1417,728,327],[1119,685,174]].forEach(([x,y,h])=>tree(x,y,h,['#243f35','#304f3b','#3e5c3e','#526c45','#748052']));
+  const treeLayer=layer('Every happy tree needs a friend', 19, 4.8, [0,245,W,525], c => {
+    trees.forEach(t=>c.drawImage(t.image,t.x-t.w/2,t.y-t.ih+10));
+  });
+
+  function rock(c,x,y,s) {
+    poly(c,[[x-s,y],[x-s*.75,y-s*.55],[x-s*.25,y-s*.78],[x+s*.5,y-s*.65],[x+s,y-s*.15],[x+s*.7,y+s*.12],[x-s*.6,y+s*.1]],'#57675b');
+    poly(c,[[x-s,y],[x-s*.75,y-s*.55],[x-s*.25,y-s*.78],[x+s*.5,y-s*.65],[x+s*.15,y-s*.3],[x-s*.55,y-s*.2]],'#9c9c7d');
+    line(c,x-s*.7,y-s*.54,x-s*.25,y-s*.75,'#ccc3a0',Math.max(1,s*.055));
+    for(let i=0;i<20;i++){const xx=x+range(-s*.6,s*.5),yy=y-range(.1,.55)*s;line(c,xx,yy,xx+range(1,s*.2),yy-range(0,3),'#d4cc9f35',1);}
+  }
+  layer('The small things make it yours', 23, 4, [0,660,W,300], c => {
+    [[495,760,31],[544,741,20],[418,803,40],[859,801,35],[904,833,44],[941,842,24],[1043,724,27],[162,830,51],[1131,897,68],[1208,918,38],[369,936,53]].forEach(a=>rock(c,...a));
+    for(let i=0;i<2300;i++) {
+      const x=rand()*W,y=range(675,960);
+      const insideLeft=x < (y<770?390: y<875?330:440), insideRight=x>(y<775?1120:y<870?1030:1040);
+      if(!insideLeft&&!insideRight)continue;
+      const h=range(3,16)*(y/960); line(c,x,y,x+range(-5,5),y-h,['#9ca16b','#bac08a','#728956','#d0be7f','#47653f'][Math.floor(rand()*5)],range(.6,1.5));
+      if(rand()<.06 && y>810) { oval(c,x,y-h,range(1.2,2.6),range(.8,1.8),rand()>.5?'#d5be8c':'#b7b5c3'); }
+    }
+    // A fallen branch and a few warm touches from the palette knife.
+    line(c,94,881,268,859,'#3b4535',12); line(c,94,877,268,855,'#a08b5e',4);line(c,190,867,222,840,'#686b45',3);
+  });
+
+  // A translucent weave unifies the marks without obscuring their color.
+  const weave=make(), wc=weave.getContext('2d');
+  for(let y=0;y<H;y+=3) line(wc,0,y,W,y,'rgba(255,250,215,.026)',.6);
+  for(let x=0;x<W;x+=3) line(wc,x,0,x,H,'rgba(33,42,30,.021)',.6);
+  for(let i=0;i<30000;i++){wc.fillStyle=rand()>.5?'#ffffed0a':'#26382608';wc.fillRect(rand()*W,rand()*H,range(.4,1.5),range(.4,1.5));}
+
+  // The mask follows alternating passes of a broad, slightly ragged brush.
+  const mask=make(), mc=mask.getContext('2d'), stage=make(), sc=stage.getContext('2d');
+  const brushEdges=Array.from({length:100},()=>range(-11,11));
+  function reveal(image,p,bounds) {
+    if(p<=0)return;
+    if(p>=1){ctx.drawImage(image,0,0);return;}
+    const [x,y,w,h]=bounds, bands=Math.ceil(h/29), amount=p*bands, finished=Math.floor(amount), part=amount-finished;
+    mc.clearRect(0,0,W,H);mc.fillStyle='#fff';
+    if(finished>0)mc.fillRect(x-20,y-20,w+40,finished*29+20);
+    const yy=y+finished*29, right=finished%2===0;
+    const edge=x+(right?part:1-part)*(w+35)-17;
+    mc.beginPath();mc.moveTo(right?x-20:x+w+20,yy-3);
+    for(let j=0;j<=9;j++)mc.lineTo(edge+brushEdges[(finished*7+j)%100],yy-3+j*3.8);
+    mc.lineTo(right?x-20:x+w+20,yy+32);mc.closePath();mc.fill();
+    sc.clearRect(0,0,W,H);sc.globalCompositeOperation='source-over';sc.drawImage(image,0,0);sc.globalCompositeOperation='destination-in';sc.drawImage(mask,0,0);sc.globalCompositeOperation='source-over';ctx.drawImage(stage,0,0);
+  }
+
+  const movingTrees=make(), mt=movingTrees.getContext('2d');
+  function drawTrees(t) {
+    mt.clearRect(0,0,W,H);
+    trees.forEach(tr=>{mt.save();mt.translate(tr.x,tr.y);mt.transform(1,0,Math.sin(t*.65+tr.phase)*.007+Math.sin(t*.29)*.003,1,0,0);mt.drawImage(tr.image,-tr.w/2,-tr.ih+10);mt.restore();});
+    return movingTrees;
+  }
+  function cloudMotion(t,alpha) {
+    ctx.save();ctx.globalAlpha=alpha;
+    clouds.forEach(c=>{ctx.globalAlpha=alpha*c.alpha;let x=((c.x+t*c.speed+600)%(W+900))-600;ctx.drawImage(c.image,x,c.y);});ctx.restore();
+  }
+  function waterMotion(t,alpha) {
+    ctx.save();ctx.globalAlpha=alpha;
+    for(let i=0;i<100;i++) {
+      const phase=(t*.055+i*.6180339)%1,y=595+phase*353;
+      const center=y<710?735: y<790?690:690+(y-790)*.25;
+      const width=y<710?260-(y-595)*1.35: y<790?65:80+(y-790)*.5;
+      const x=center+Math.sin(i*127.1)*width;
+      const a=Math.sin(phase*Math.PI)*(.12+.15*Math.sin(i));
+      line(ctx,x+Math.sin(t*.6+i)*4,y,x+Math.sin(t*.6+i)*4+7+phase*27,y,`rgba(243,240,210,${a})`,.7+phase);
+    }
+    for(let i=0;i<22;i++){const p=(t*.45+i*.193)%1,x=608+i*7.7,y=762+Math.sin(x*.05)*7;line(ctx,x,y+p*15,x+2,y+p*15+4,`rgba(246,244,220,${Math.sin(p*Math.PI)*.45})`,1.2);}
+    ctx.restore();
+  }
+  function birds(t,alpha) {
+    ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle='#485c57';ctx.lineWidth=1.7;ctx.lineCap='round';
+    for(let i=0;i<5;i++) {
+      const x=((t*17+i*29+220)%(W+300))-150,y=215+i*15+Math.sin(t*.26+i)*17;
+      const flap=Math.sin(t*3.4+i*.7)*4, size=5+i*.7;
+      ctx.beginPath();ctx.moveTo(x-size,y-flap);ctx.quadraticCurveTo(x-size*.4,y-3,x,y+1);ctx.quadraticCurveTo(x+size*.4,y-3,x+size,y-flap);ctx.stroke();
+    }ctx.restore();
+  }
+  function motes(t,alpha){ctx.save();ctx.globalAlpha=alpha;for(let i=0;i<18;i++){const x=100+((i*117.7+t*(2+i%3))%1250),y=640+Math.sin(i*19+t*.21)*90;oval(ctx,x,y,.8+Math.sin(i)*.3,.8,'#e6dfad65');}ctx.restore();}
+
+  const chapter=document.getElementById('chapter'), progress=document.getElementById('progress'), track=document.querySelector('.track'), pause=document.getElementById('pause');
+  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
+  const DURATION=27;
+  let paintTime=reduced.matches?DURATION:0, time=0, paused=reduced.matches, last=0, lastChapter='', request=0;
+  function render() {
+    ctx.drawImage(ground,0,0);
+    layers.forEach((l,i)=>{
+      const p=clamp((paintTime-l.start)/l.duration);
+      reveal(l===treeLayer?drawTrees(time):l.image,p,l.bounds);
+      if(i===0)cloudMotion(time,clamp((paintTime-2)/3));
+      if(l===water)waterMotion(time,clamp((paintTime-14)/3));
+    });
+    // Birds cross in front of the finished distant landscape, behind nearby branches.
+    if(paintTime>11)birds(time,clamp((paintTime-11)/3));
+    motes(time,clamp((paintTime-23)/4));
+    ctx.drawImage(weave,0,0);
+    const vignette=ctx.createRadialGradient(W*.52,H*.4,H*.3,W*.5,H*.5,W*.67);vignette.addColorStop(0,'#1e322500');vignette.addColorStop(1,'#1e32251f');ctx.fillStyle=vignette;ctx.fillRect(0,0,W,H);
+    const percent=Math.round(clamp(paintTime/DURATION)*100);progress.style.width=percent+'%';track.setAttribute('aria-valuenow',percent);
+    const active=[...layers].reverse().find(l=>paintTime>=l.start);
+    const label=paintTime>=DURATION?'The world is yours. Stay a while.':active?active.name:'Preparing the canvas';
+    if(label!==lastChapter){chapter.textContent=label;lastChapter=label;}
+  }
+  function tick(stamp) {
+    if(!paused){const dt=last?Math.min((stamp-last)/1000,.05):0;time+=dt;paintTime=Math.min(DURATION,paintTime+dt);render();}
+    last=stamp;request=requestAnimationFrame(tick);
+  }
+  function updatePause(){pause.querySelector('span').textContent=paused?'Resume':'Pause';pause.setAttribute('aria-label',paused?'Resume animation':'Pause animation');pause.querySelector('svg').innerHTML=paused?'<path d="M5 2.5 13 8l-8 5.5z"/>':'<path d="M4 3h3v10H4zm5 0h3v10H9z"/>';}
+  pause.addEventListener('click',()=>{paused=!paused;last=0;updatePause();});
+  document.getElementById('replay').addEventListener('click',()=>{paintTime=0;time=0;paused=false;last=0;updatePause();render();});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelAnimationFrame(request);else{last=0;request=requestAnimationFrame(tick);}});
+  reduced.addEventListener('change',e=>{if(e.matches){paintTime=DURATION;paused=true;updatePause();render();}});
+  updatePause();render();request=requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>

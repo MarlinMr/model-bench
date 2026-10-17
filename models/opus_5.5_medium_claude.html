@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quiet Creek Morning</title>
+<style>
+  :root {
+    --wall-1: #6d5b49;
+    --wall-2: #3a2f26;
+    --wall-3: #1f1914;
+    --cream: #f1e6cf;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--cream);
+    background:
+      radial-gradient(ellipse 70% 55% at 50% 8%, rgba(255, 228, 180, .22), transparent 70%),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.035) 0 2px, transparent 2px 7px),
+      radial-gradient(ellipse at 50% 30%, var(--wall-1) 0%, var(--wall-2) 55%, var(--wall-3) 100%);
+  }
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(10px, 2vh, 22px);
+    padding: 16px;
+  }
+  .frame {
+    position: relative;
+    padding: clamp(14px, 2.8vmin, 36px);
+    border-radius: 3px;
+    background:
+      repeating-linear-gradient(28deg, rgba(0,0,0,.10) 0 3px, transparent 3px 9px, rgba(255,210,150,.05) 9px 11px, transparent 11px 17px),
+      linear-gradient(135deg, #6b4523 0%, #9a6a3a 18%, #5a3618 42%, #8a5c30 64%, #4a2c13 82%, #7a4f28 100%);
+    box-shadow:
+      0 40px 70px rgba(0,0,0,.65),
+      0 12px 24px rgba(0,0,0,.45),
+      inset 0 2px 2px rgba(255, 225, 175, .45),
+      inset 0 -3px 5px rgba(0,0,0,.55),
+      inset 3px 0 4px rgba(255, 220, 170, .18),
+      inset -3px 0 5px rgba(0,0,0,.4);
+  }
+  .liner {
+    padding: clamp(4px, .9vmin, 11px);
+    background: linear-gradient(160deg, #e8d29a, #b8964f 45%, #d9bd7c 70%, #9c7a3c);
+    box-shadow: inset 0 0 0 1px rgba(80,50,10,.5), 0 0 0 1px rgba(30,15,5,.6);
+  }
+  .canvas-wrap {
+    position: relative;
+    line-height: 0;
+    box-shadow: 0 0 0 1px rgba(40,25,10,.7);
+  }
+  canvas {
+    display: block;
+    width: min(calc(96vw - 110px), calc((100vh - 300px) * 1.5));
+    min-width: 260px;
+    aspect-ratio: 3 / 2;
+    height: auto;
+    background: #f4f0e4;
+  }
+  .canvas-wrap::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: inset 0 3px 10px rgba(0,0,0,.45), inset 0 0 2px rgba(0,0,0,.6);
+  }
+  .plaque {
+    padding: 7px 22px 8px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #d9b871, #a9843f 55%, #c9a75e);
+    color: #3b2810;
+    font-size: clamp(11px, 1.6vmin, 15px);
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    box-shadow: 0 3px 8px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,240,200,.7), inset 0 -1px 0 rgba(80,50,10,.5);
+    text-shadow: 0 1px 0 rgba(255,235,190,.5);
+  }
+  .caption {
+    min-height: 1.5em;
+    font-style: italic;
+    font-size: clamp(13px, 2vmin, 19px);
+    color: rgba(241, 230, 207, .92);
+    text-shadow: 0 2px 6px rgba(0,0,0,.6);
+    transition: opacity .35s ease;
+    text-align: center;
+    max-width: 90vw;
+  }
+  .controls {
+    display: flex;
+    gap: 10px;
+    opacity: .5;
+    transition: opacity .3s;
+  }
+  .controls:hover, .controls:focus-within { opacity: 1; }
+  button {
+    font: inherit;
+    font-size: 13px;
+    color: var(--cream);
+    background: rgba(0,0,0,.25);
+    border: 1px solid rgba(241,230,207,.35);
+    border-radius: 999px;
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: background .2s, border-color .2s;
+  }
+  button:hover { background: rgba(0,0,0,.45); border-color: rgba(241,230,207,.7); }
+  button:focus-visible { outline: 2px solid #e8d29a; outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="frame">
+    <div class="liner">
+      <div class="canvas-wrap">
+        <canvas id="art" width="1200" height="800" aria-label="An animated landscape painting being painted live: sky, mountains, a lake, a stream, a cabin and evergreen trees"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="plaque">Quiet Creek Morning</div>
+  <div class="caption" id="caption">Preparing the canvas&hellip;</div>
+  <div class="controls">
+    <button id="skip" type="button">Skip ahead</button>
+    <button id="replay" type="button">Paint it again</button>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ------------------------------------------------------------------ *
+ *  Basics
+ * ------------------------------------------------------------------ */
+const W = 1200, H = 800;
+const art = document.getElementById('art');
+const ctx = art.getContext('2d');
+const captionEl = document.getElementById('caption');
+
+function mk(w = W, h = H) {
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(w); c.height = Math.ceil(h);
+  return c;
+}
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const rand = mulberry32(1987);
+const rr = (a, b) => a + (b - a) * rand();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => t * t * (3 - 2 * t);
+const hsl = (h, s, l, a = 1) => `hsla(${h},${s}%,${l}%,${a})`;
+const rgb = (c, a = 1, k = 0) => `rgba(${c[0] + k | 0},${c[1] + k | 0},${c[2] + k | 0},${a})`;
+
+function makeNoise(seed) {
+  const r = mulberry32(seed), p = new Float32Array(1024);
+  for (let i = 0; i < 1024; i++) p[i] = r() * 2 - 1;
+  return x => {
+    const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f);
+    return p[i & 1023] * (1 - u) + p[(i + 1) & 1023] * u;
+  };
+}
+const N1 = makeNoise(11), N2 = makeNoise(23), N3 = makeNoise(37);
+const fbm = (n, x, o = 4) => {
+  let s = 0, a = 1, f = 1, t = 0;
+  for (let i = 0; i < o; i++) { s += n(x * f) * a; t += a; a *= .5; f *= 2.03; }
+  return s / t;
+};
+
+/* Gentle wind: rolling waves across the scene plus the occasional gust. */
+function gust(t) { return .55 * Math.pow(Math.max(0, Math.sin(t * .21)), 6) * (1 + Math.sin(t * 1.7)); }
+function wind(t, x) {
+  return .5 * Math.sin(t * .55 - x * .0035)
+       + .28 * Math.sin(t * 1.3 - x * .008 + 1.3)
+       + .12 * Math.sin(t * 2.7 - x * .015)
+       + gust(t - x * .002);
+}
+
+/* ------------------------------------------------------------------ *
+ *  Painting primitives
+ * ------------------------------------------------------------------ */
+function bristle(g, x1, y1, x2, y2, w, col, alpha, n = 5) {
+  const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+  g.strokeStyle = col; g.lineCap = 'round';
+  const lw = Math.max(.8, w / n * 1.2);
+  for (let i = 0; i < n; i++) {
+    const o = (n === 1 ? 0 : (i / (n - 1) - .5)) * w + rr(-.8, .8);
+    const a = rr(0, .12), b = rr(.82, 1);
+    g.globalAlpha = alpha * rr(.45, 1);
+    g.lineWidth = lw * rr(.6, 1.2);
+    g.beginPath();
+    g.moveTo(x1 + dx * a + nx * o, y1 + dy * a + ny * o);
+    g.lineTo(x1 + dx * b + nx * o, y1 + dy * b + ny * o);
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+}
+
+/* Palette-knife stroke: many thin, broken parallel lines. */
+function knife(g, x, y, ang, L, w, col, alpha) {
+  const dx = Math.cos(ang), dy = Math.sin(ang), nx = -dy, ny = dx;
+  g.strokeStyle = col; g.lineCap = 'butt';
+  for (let o = -w / 2; o <= w / 2; o += 1.1) {
+    let s = rr(0, 3);
+    const lim = L * rr(.7, 1) * (1 - Math.abs(o) / w * .5);
+    while (s < lim) {
+      const e = Math.min(lim, s + rr(4, 16) * (1 - s / lim * .5));
+      g.globalAlpha = alpha * rr(.5, 1) * (1 - s / lim * .6);
+      g.lineWidth = rr(.8, 1.6);
+      g.beginPath();
+      g.moveTo(x + dx * s + nx * o, y + dy * s + ny * o);
+      g.lineTo(x + dx * e + nx * o, y + dy * e + ny * o);
+      g.stroke();
+      s = e + rr(0, 2 + s / lim * 8);
+    }
+  }
+  g.globalAlpha = 1;
+}
+
+/* Little grassy tap of a brush corner. */
+function tap(g, x, y, w, col, a) {
+  g.strokeStyle = col; g.globalAlpha = a; g.lineWidth = 1.3; g.lineCap = 'round';
+  g.beginPath();
+  const n = 3 + (w | 0) / 2;
+  for (let j = 0; j < n; j++) {
+    const xx = x + rr(-w / 2, w / 2), yy = y + rr(-1.5, 1.5);
+    g.moveTo(xx, yy); g.lineTo(xx + rr(-1.2, 1.2), yy - rr(2, 5));
+  }
+  g.stroke(); g.globalAlpha = 1;
+}
+
+function poly(g, pts, fill) {
+  g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.closePath(); g.fillStyle = fill; g.fill();
+}
+
+function ridge(points, rough, iters) {
+  let pts = points.map(p => p.slice()), d = rough;
+  for (let k = 0; k < iters; k++) {
+    const np = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      np.push(a, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + rr(-d, d)]);
+    }
+    np.push(pts[pts.length - 1]);
+    pts = np; d *= .55;
+  }
+  return pts;
+}
+function ridgeY(pts, x) {
+  let lo = 0, hi = pts.length - 1;
+  if (x <= pts[0][0]) return pts[0][1];
+  if (x >= pts[hi][0]) return pts[hi][1];
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (pts[m][0] <= x) lo = m; else hi = m; }
+  const a = pts[lo], b = pts[hi];
+  return lerp(a[1], b[1], (x - a[0]) / (b[0] - a[0]));
+}
+function ridgePath(g, pts, bottom) {
+  g.beginPath(); g.moveTo(pts[0][0], bottom);
+  for (const p of pts) g.lineTo(p[0], p[1]);
+  g.lineTo(pts[pts.length - 1][0], bottom); g.closePath();
+}
+function catmull(pts, n) {
+  const out = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    for (let k = 0; k < n; k++) {
+      const t = k / n, t2 = t * t, t3 = t2 * t;
+      const f = (a, b, c, d) => .5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  out.push(pts[pts.length - 1].slice());
+  return out;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Scene geometry
+ * ------------------------------------------------------------------ */
+const GX = 500, GY = 410;          // where the sky glows brightest
+const HORIZON = 470;                // lake surface line
+const SKY = [[0, [34, 58, 104]], [150, [58, 100, 156]], [290, [132, 170, 204]], [390, [222, 218, 198]], [470, [252, 238, 204]], [800, [252, 238, 204]]];
+function skyRGB(y) {
+  for (let i = 0; i < SKY.length - 1; i++) {
+    const [y0, c0] = SKY[i], [y1, c1] = SKY[i + 1];
+    if (y <= y1 || i === SKY.length - 2) {
+      const t = clamp((y - y0) / (y1 - y0), 0, 1);
+      return [lerp(c0[0], c1[0], t), lerp(c0[1], c1[1], t), lerp(c0[2], c1[2], t)];
+    }
+  }
+}
+
+const farR = ridge([[-20, 400], [110, 352], [250, 385], [370, 338], [500, 378], [640, 330], [800, 372], [950, 334], [1080, 368], [1220, 350]], 22, 7);
+const mtnR = ridge([[60, 478], [170, 420], [270, 360], [350, 300], [420, 262], [480, 205], [560, 138], [610, 180], [650, 212], [700, 196], [745, 222], [810, 272], [900, 330], [1000, 392], [1100, 440], [1180, 478]], 14, 6);
+const hillR = ridge([[-20, 452], [140, 432], [290, 446], [430, 428], [580, 448], [720, 433], [880, 446], [1030, 428], [1220, 444]], 7, 6);
+
+const shoreY = x => 562 + 14 * Math.exp(-(((x - 655) / 240) ** 2)) + 7 * fbm(N1, x * .011) - Math.max(0, 300 - x) * .035 - Math.max(0, x - 950) * .02;
+const hillDefs = [
+  { f: shoreY, base: [112, 30, 23] },
+  { f: x => 626 + 24 * fbm(N2, x * .006 + 3) - 22 * Math.exp(-(((x - 160) / 230) ** 2)) - 14 * Math.exp(-(((x - 1060) / 200) ** 2)), base: [108, 33, 19] },
+  { f: x => 688 + 26 * fbm(N3, x * .005 + 7), base: [104, 36, 16] },
+  { f: x => 750 + 18 * fbm(N1, x * .008 + 13), base: [100, 38, 13] },
+];
+
+/* Stream: a centre line with widening banks. */
+const sCtrl = [[662, 568], [656, 600], [668, 640], [650, 690], [594, 742], [526, 800], [488, 852]];
+const SP = catmull(sCtrl, 40).map(p => ({ x: p[0], y: p[1] }));
+const SN = SP.length;
+SP.forEach((p, i) => {
+  p.s = i / (SN - 1);
+  const a = SP[Math.max(0, i - 1)], b = SP[Math.min(SN - 1, i + 1)];
+  let tx = b.x - a.x, ty = b.y - a.y; const l = Math.hypot(tx, ty) || 1; tx /= l; ty /= l;
+  p.nx = -ty; p.ny = tx;
+  const hw = 20 + 175 * Math.pow(p.s, 1.6);
+  p.hl = hw * (1 + .12 * N2(i * .09)); p.hr = hw * (1 + .12 * N3(i * .09));
+  p.lx = p.x + p.nx * p.hl; p.ly = p.y + p.ny * p.hl;
+  p.rx = p.x - p.nx * p.hr; p.ry = p.y - p.ny * p.hr;
+});
+const streamPath = new Path2D();
+streamPath.moveTo(SP[0].lx, SP[0].ly);
+for (const p of SP) streamPath.lineTo(p.lx, p.ly);
+for (let i = SN - 1; i >= 0; i--) streamPath.lineTo(SP[i].rx, SP[i].ry);
+streamPath.closePath();
+function streamAt(s, u) {
+  const f = clamp(s, 0, 1) * (SN - 1), i = Math.min(SN - 2, Math.floor(f)), t = f - i;
+  const a = SP[i], b = SP[i + 1];
+  const x = lerp(a.x, b.x, t), y = lerp(a.y, b.y, t), nx = lerp(a.nx, b.nx, t), ny = lerp(a.ny, b.ny, t);
+  const hw = u > 0 ? lerp(a.hl, b.hl, t) : lerp(a.hr, b.hr, t);
+  return [x + nx * u * hw, y + ny * u * hw];
+}
+function sAtY(y) { for (let i = 0; i < SN; i++) if (SP[i].y >= y) return i / (SN - 1); return 1; }
+function streamEdgesAtY(y) { const p = SP[Math.round(sAtY(y) * (SN - 1))]; return [p.lx, p.rx]; }
+const WF0 = 588, WF1 = 607;        // little waterfall where the lake spills over
+const [wfL, wfR] = streamEdgesAtY(WF0);
+const S_FLOW = sAtY(WF1 + 2);
+
+const CABX = 840, CABY = 616;      // cabin placement (left, base)
+
+/* ------------------------------------------------------------------ *
+ *  Static painted layers
+ * ------------------------------------------------------------------ */
+function paintBlank() {
+  const c = mk(), g = c.getContext('2d');
+  g.fillStyle = 'rgb(244,240,228)'; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 900; i++) {
+    const x = rr(0, W), y = rr(0, H), a = rr(-.3, .3);
+    bristle(g, x, y, x + Math.cos(a) * 60, y + Math.sin(a) * 60, 18, rand() < .5 ? 'rgb(255,253,245)' : 'rgb(228,222,206)', .08, 4);
+  }
+  return c;
+}
+
+function paintSky() {
+  const c = mk(), g = c.getContext('2d');
+  for (let y = 0; y < 500; y++) { g.fillStyle = rgb(skyRGB(y)); g.fillRect(0, y, W, 1); }
+  const gr = g.createRadialGradient(GX, GY, 10, GX, GY, 420);
+  gr.addColorStop(0, 'rgba(255,248,222,.85)'); gr.addColorStop(.35, 'rgba(255,240,205,.35)'); gr.addColorStop(1, 'rgba(255,240,205,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, W, 500);
+  for (let i = 0; i < 3800; i++) {
+    const x = rr(-30, W + 30), y = rr(-10, 490);
+    const glow = Math.max(0, 1 - Math.hypot(x - GX, y - GY) / 420);
+    const ang = (rand() < .5 ? -1 : 1) * rr(.6, .95), L = rr(18, 55);
+    bristle(g, x, y, x + Math.cos(ang) * L, y + Math.sin(ang) * L, rr(6, 14), rgb(skyRGB(y + rr(-25, 25)), 1, rr(-14, 14) + glow * 30), rr(.05, .13), 4);
+  }
+  return c;
+}
+
+function makeCloud(w, h) {
+  const pad = 40, c = mk(w + pad * 2, h + pad * 2), g = c.getContext('2d');
+  const puffs = [], n = Math.round(w / 28) + 4;
+  for (let i = 0; i < n; i++) {
+    const fx = rr(.08, .92), dome = Math.sin(Math.PI * fx);
+    puffs.push([pad + fx * w, pad + h * .78 - dome * h * rr(.25, .55), h * rr(.22, .4) * (.6 + .6 * dome)]);
+  }
+  for (const [x, y, r] of puffs) {
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(255,255,255,.55)'); gr.addColorStop(.7, 'rgba(255,255,255,.3)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+  g.lineCap = 'round';
+  for (const [x, y, r] of puffs) {
+    for (let k = 0; k < 70; k++) {
+      const a = rr(Math.PI, Math.PI * 2), d = r * rr(.4, 1);
+      g.strokeStyle = `rgba(255,255,252,${rr(.04, .14)})`; g.lineWidth = rr(1.5, 3.5);
+      g.beginPath(); g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, rr(2, 6), 0, Math.PI * 2 * rr(.4, 1)); g.stroke();
+    }
+  }
+  g.globalCompositeOperation = 'source-atop';
+  const sh = g.createLinearGradient(0, pad + h * .3, 0, pad + h);
+  sh.addColorStop(0, 'rgba(170,170,195,0)'); sh.addColorStop(1, 'rgba(150,145,175,.55)');
+  g.fillStyle = sh; g.fillRect(0, 0, c.width, c.height);
+  const hl = g.createLinearGradient(0, pad, 0, pad + h * .5);
+  hl.addColorStop(0, 'rgba(255,246,225,.5)'); hl.addColorStop(1, 'rgba(255,246,225,0)');
+  g.fillStyle = hl; g.fillRect(0, 0, c.width, c.height);
+  g.globalCompositeOperation = 'source-over';
+  return c;
+}
+
+function paintFar() {
+  const c = mk(), g = c.getContext('2d');
+  ridgePath(g, farR, 480);
+  const gr = g.createLinearGradient(0, 320, 0, 480);
+  gr.addColorStop(0, 'rgb(120,128,165)'); gr.addColorStop(1, 'rgb(196,200,214)');
+  g.fillStyle = gr; g.fill();
+  g.save(); g.clip();
+  for (let x = -10; x < W + 10; x += 3) {
+    const y = ridgeY(farR, x), lit = ridgeY(farR, x + 5) - ridgeY(farR, x - 5) < 0;
+    if (rand() < .55) continue;
+    if (lit) knife(g, x, y, rr(1.9, 2.3), rr(10, 45), rr(3, 6), 'rgb(214,214,230)', .45);
+    else knife(g, x, y, rr(.9, 1.3), rr(8, 35), rr(3, 6), 'rgb(105,112,150)', .35);
+  }
+  const hz = g.createLinearGradient(0, 380, 0, 480);
+  hz.addColorStop(0, 'rgba(220,222,232,0)'); hz.addColorStop(1, 'rgba(225,228,236,.8)');
+  g.fillStyle = hz; g.fillRect(0, 300, W, 200);
+  g.restore();
+  return c;
+}
+
+function paintMtn() {
+  const c = mk(), g = c.getContext('2d');
+  ridgePath(g, mtnR, 482);
+  const gr = g.createLinearGradient(0, 140, 0, 480);
+  gr.addColorStop(0, 'rgb(44,46,70)'); gr.addColorStop(1, 'rgb(78,88,112)');
+  g.fillStyle = gr; g.fill();
+  g.save(); g.clip();
+  for (let i = 0; i < 1500; i++) {
+    const x = rr(60, 1180), y = rr(ridgeY(mtnR, x), 480), a = rr(1.0, 2.1);
+    bristle(g, x, y, x + Math.cos(a) * 30, y + Math.sin(a) * 30, 8, hsl(rr(215, 235), rr(15, 28), rr(16, 34)), .25, 4);
+  }
+  g.restore();
+  return c;
+}
+
+function paintSnow(mtnC) {
+  const c = mk(), g = c.getContext('2d');
+  for (let x = 70; x < 1170; x += 2.5) {
+    const y = ridgeY(mtnR, x), depth = clamp((476 - y) / 330, 0, 1);
+    if (rand() > depth * 1.1 + .15) continue;
+    const lit = ridgeY(mtnR, x + 5) - ridgeY(mtnR, x - 5) < 0;
+    const L = (14 + depth * depth * 150) * rr(.4, 1);
+    if (lit) knife(g, x, y - 1, rr(1.85, 2.25), L, rr(3, 8), 'rgb(252,250,244)', rr(.7, .95));
+    else knife(g, x, y - 1, rr(.9, 1.3), L * .9, rr(3, 7), rand() < .5 ? 'rgb(150,164,198)' : 'rgb(118,132,170)', rr(.55, .8));
+  }
+  const starts = [[560, 0], [480, -1], [700, 1], [420, -1], [745, 1], [650, 1], [350, -1], [810, 1]];
+  for (const [sx, dir] of starts) {
+    let x = sx, y = ridgeY(mtnR, sx) + 2;
+    while (y < 440) {
+      y += rr(4, 7); x += dir * rr(0, 3) + rr(-2.5, 2.5);
+      const depth = clamp((476 - y) / 330, 0, 1);
+      if (rand() < .8) knife(g, x, y, rr(1.95, 2.4), (10 + depth * 60) * rr(.4, 1), rr(3, 6), 'rgb(250,248,240)', .8 * depth + .1);
+      if (rand() < .6) knife(g, x + 1, y, rr(.7, 1.1), (8 + depth * 40) * rr(.3, 1), rr(2, 5), 'rgb(110,124,165)', .6);
+    }
+  }
+  g.globalCompositeOperation = 'destination-in';
+  g.drawImage(mtnC, 0, 0);
+  g.globalCompositeOperation = 'source-over';
+  return c;
+}
+
+function paintMistStatic() {
+  const c = mk(), g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 340, 0, 480);
+  gr.addColorStop(0, 'rgba(236,238,242,0)'); gr.addColorStop(.75, 'rgba(236,238,242,.72)'); gr.addColorStop(1, 'rgba(240,240,242,.9)');
+  g.fillStyle = gr; g.fillRect(0, 340, W, 140);
+  return c;
+}
+function paintMistSprite() {
+  const c = mk(2400, 180), g = c.getContext('2d');
+  for (let i = 0; i < 70; i++) {
+    const x = rr(0, 1200), y = rr(40, 150), rx = rr(60, 200), ry = rr(10, 30), a = rr(.12, .28);
+    for (let k = -1; k <= 2; k++) {
+      g.save(); g.translate(x + k * 1200, y); g.scale(1, ry / rx);
+      const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx);
+      gr.addColorStop(0, `rgba(248,248,250,${a})`); gr.addColorStop(1, 'rgba(248,248,250,0)');
+      g.fillStyle = gr; g.fillRect(-rx, -rx, rx * 2, rx * 2);
+      g.restore();
+    }
+  }
+  return c;
+}
+
+function smallPine(g, x, base, h) {
+  const top = base - h;
+  g.lineCap = 'round';
+  g.strokeStyle = hsl(190, 20, 16); g.lineWidth = 1;
+  g.beginPath(); g.moveTo(x, base); g.lineTo(x, top); g.stroke();
+  g.lineWidth = 1;
+  for (let y = top; y < base; y += 1.3) {
+    const t = (y - top) / h, hw = h * .26 * Math.pow(t, .9) * (.7 + .3 * ((t * 6) % 1));
+    for (const side of [-1, 1]) {
+      g.strokeStyle = hsl(rr(175, 195), rr(15, 25), rr(14, 22));
+      const len = hw * rr(.5, 1);
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x + side * len, y + len * .35); g.stroke();
+    }
+    if (rand() < .3) {
+      g.strokeStyle = hsl(rr(140, 165), 20, rr(32, 42)); g.globalAlpha = .7;
+      const len = hw * rr(.4, .9);
+      g.beginPath(); g.moveTo(x - len * .3, y + 1); g.lineTo(x - len, y + len * .4); g.stroke();
+      g.globalAlpha = 1;
+    }
+  }
+}
+function paintHills() {
+  const c = mk(), g = c.getContext('2d');
+  ridgePath(g, hillR, 476);
+  const gr = g.createLinearGradient(0, 425, 0, 476);
+  gr.addColorStop(0, hsl(178, 20, 27)); gr.addColorStop(1, hsl(182, 22, 21));
+  g.fillStyle = gr; g.fill();
+  for (let x = -10; x < W + 10; x += rr(3, 9)) {
+    const base = ridgeY(hillR, x) + rr(4, 14);
+    const h = rr(12, 42) * (.7 + .5 * (fbm(N2, x * .01) + 1) / 2);
+    smallPine(g, x, base, h);
+  }
+  g.globalCompositeOperation = 'source-atop';
+  const top = g.createLinearGradient(0, 380, 0, 440);
+  top.addColorStop(0, 'rgba(200,210,222,.35)'); top.addColorStop(1, 'rgba(200,210,222,0)');
+  g.fillStyle = top; g.fillRect(0, 370, W, 80);
+  const mist = g.createLinearGradient(0, 440, 0, 476);
+  mist.addColorStop(0, 'rgba(226,231,236,0)'); mist.addColorStop(1, 'rgba(226,231,236,.55)');
+  g.fillStyle = mist; g.fillRect(0, 440, W, 40);
+  g.globalCompositeOperation = 'source-over';
+  return c;
+}
+
+function paintLakeTex() {
+  const c = mk(), g = c.getContext('2d');
+  for (let i = 0; i < 700; i++) {
+    const y = rr(HORIZON, 600), x = rr(-20, W), L = rr(20, 120);
+    bristle(g, x, y, x + L, y + rr(-.5, .5), rr(2, 4), rand() < .5 ? 'rgb(225,235,242)' : 'rgb(35,55,75)', .07, 3);
+  }
+  return c;
+}
+
+function paintLand() {
+  const c = mk(), g = c.getContext('2d');
+  hillDefs.forEach((hd, i) => {
+    const path = new Path2D();
+    path.moveTo(-10, 820);
+    for (let x = -10; x <= W + 10; x += 6) path.lineTo(x, hd.f(x));
+    path.lineTo(W + 10, 820); path.closePath();
+    g.fillStyle = hsl(...hd.base); g.fill(path);
+    g.save(); g.clip(path);
+    const n = 4000 - i * 400;
+    for (let k = 0; k < n; k++) {
+      const x = rr(-5, W + 5), top = hd.f(x), d = Math.pow(rand(), 1.6) * 170, y = top + d;
+      const patch = .55 + .45 * fbm(N2, x * .004 + i * 5);
+      const lit = Math.exp(-d / (26 + i * 8)) * patch * (1 - i * .08);
+      let col, a;
+      if (rand() < lit) { col = hsl(rr(62, 88), rr(42, 60), rr(40, 56)); a = rr(.5, .9); }
+      else if (rand() < .5) { col = hsl(rr(95, 120), rr(30, 45), rr(18, 30)); a = rr(.35, .7); }
+      else { col = hsl(rr(110, 140), rr(25, 40), rr(8, 14)); a = rr(.3, .6); }
+      tap(g, x, y, rr(3, 7) + i, col, a);
+    }
+    g.restore();
+  });
+  // dirt bank and water line along the lake shore
+  for (let x = -5; x < W + 5; x += 3) {
+    const y = shoreY(x);
+    bristle(g, x, y + 1.5, x + rr(6, 14), y + rr(1, 3), rr(3, 5), hsl(25, 30, rr(16, 26)), .85, 3);
+    if (rand() < .5) bristle(g, x, y, x + rr(4, 9), y, 1.5, hsl(32, 30, rr(38, 50)), .6, 2);
+    if (rand() < .45) { g.fillStyle = 'rgba(238,240,236,.55)'; g.fillRect(x, y - 2, rr(4, 18), 1.2); }
+  }
+  return c;
+}
+
+function rock(g, x, y, rw, rh) {
+  const pts = [];
+  for (let i = 0; i <= 10; i++) {
+    const a = Math.PI + i / 10 * Math.PI, r = rr(.85, 1.1);
+    pts.push([x + Math.cos(a) * rw * r, y + Math.sin(a) * rh * r]);
+  }
+  pts.push([x + rw, y + rh * .15], [x - rw, y + rh * .15]);
+  g.save();
+  poly(g, pts, hsl(30, 8, rr(13, 19)));
+  g.clip();
+  for (let k = 0; k < rw * 1.5; k++) {
+    const px = x + rr(-rw, rw * .4), py = y + rr(-rh, 0);
+    bristle(g, px, py, px + rr(2, 6), py - rr(1, 4), 2, hsl(35, 12, rr(40, 58)), .7, 2);
+  }
+  for (let k = 0; k < rw; k++) {
+    const px = x + rr(0, rw), py = y + rr(-rh * .6, rh * .2);
+    bristle(g, px, py, px - rr(2, 5), py + rr(1, 3), 2, hsl(30, 10, rr(6, 11)), .6, 2);
+  }
+  g.restore();
+  g.fillStyle = 'rgba(232,240,242,.7)';
+  g.fillRect(x - rw * 1.05, y + rh * .12, rw * 2.1 * rr(.7, 1), 1.3);
+}
+
+const streamRocks = [];
+function paintStream() {
+  const base = mk(), g = base.getContext('2d');
+  g.save(); g.clip(streamPath);
+  const gr = g.createLinearGradient(0, 560, 0, 830);
+  gr.addColorStop(0, 'rgb(206,218,222)'); gr.addColorStop(.2, 'rgb(158,186,200)'); gr.addColorStop(1, 'rgb(58,98,122)');
+  g.fillStyle = gr; g.fillRect(0, 540, W, 300);
+  // reflections of the dark banks
+  for (let i = 0; i < SN; i++) {
+    const p = SP[i], wd = (8 + 50 * p.s);
+    bristle(g, p.lx, p.ly, p.lx + wd * rr(.5, 1), p.ly, 2 + p.s * 4, hsl(110, 30, rr(10, 18)), .35, 3);
+    bristle(g, p.rx, p.ry, p.rx - wd * rr(.5, 1), p.ry, 2 + p.s * 4, hsl(110, 30, rr(10, 18)), .35, 3);
+  }
+  for (let i = 0; i < 1800; i++) {
+    const s = rand(), [x, y] = streamAt(s, rr(-1, 1)), L = 10 + 70 * s;
+    bristle(g, x - L / 2, y, x + L / 2, y + rr(-.5, .5), 2 + 4 * s, rand() < .55 ? 'rgb(222,236,242)' : 'rgb(30,60,80)', .12, 3);
+  }
+  // lake water above the falls and dark recess behind them
+  g.fillStyle = 'rgb(112,138,150)'; g.fillRect(0, 540, W, WF0 - 540);
+  const fg = g.createLinearGradient(0, WF0, 0, WF1);
+  fg.addColorStop(0, 'rgba(40,62,72,.95)'); fg.addColorStop(1, 'rgba(80,110,124,.9)');
+  g.fillStyle = fg; g.fillRect(0, WF0, W, WF1 - WF0);
+  g.restore();
+
+  const top = mk(), t = top.getContext('2d');
+  // muddy banks
+  for (const side of [1, -1]) {
+    for (let i = 0; i < SN - 1; i++) {
+      const p = SP[i], q = SP[i + 1];
+      const ax = side > 0 ? p.lx : p.rx, ay = side > 0 ? p.ly : p.ry;
+      const bx = side > 0 ? q.lx : q.rx, by = side > 0 ? q.ly : q.ry;
+      const th = 2 + 9 * p.s, ox = p.nx * side * th * .4, oy = p.ny * side * th * .4;
+      bristle(t, ax + ox, ay + oy, bx + ox, by + oy, th, hsl(25, 30, rr(14, 22)), .9, 3);
+      if (rand() < .6) bristle(t, ax + ox * 2, ay + oy * 2 - 1, bx + ox * 2, by + oy * 2 - 1, 1.5 + p.s * 2, hsl(32, 30, rr(34, 48)), .6, 2);
+      if (rand() < .5) { t.fillStyle = 'rgba(236,242,242,.55)'; t.fillRect(ax - ox * .5 - (side > 0 ? 0 : 8), ay, 3 + 9 * p.s, 1.2); }
+    }
+  }
+  // ledge of rocks for the falls
+  for (let x = wfL - 6; x < wfR + 8; x += rr(5, 8)) rock(t, x, WF0 + rr(-1, 2), rr(4, 7), rr(3, 5));
+  // rocks along the banks and a few in the water
+  for (let k = 0; k < 16; k++) {
+    const s = rr(.18, 1), side = rand() < .5 ? 1 : -1;
+    const [x, y] = streamAt(s, side * rr(.85, 1.05));
+    const rw = 5 + 26 * s;
+    streamRocks.push({ x, y, rw, rh: rw * rr(.5, .7), ph: rand() });
+  }
+  for (let k = 0; k < 4; k++) {
+    const s = rr(.55, .95), [x, y] = streamAt(s, rr(-.5, .5)), rw = 6 + 20 * s;
+    streamRocks.push({ x, y, rw, rh: rw * rr(.45, .6), ph: rand() });
+  }
+  streamRocks.sort((a, b) => a.y - b.y);
+  for (const r of streamRocks) rock(t, r.x, r.y, r.rw, r.rh);
+  return { base, top };
+}
+
+function makeCabin() {
+  const c = mk(150, 115), g = c.getContext('2d');
+  g.lineCap = 'round';
+  g.fillStyle = 'rgba(20,25,10,.45)'; g.beginPath(); g.ellipse(76, 103, 70, 7, 0, 0, 7); g.fill();
+  // side wall in shadow
+  poly(g, [[74, 58], [128, 53], [128, 99], [74, 102]], hsl(24, 30, 20));
+  for (let y = 61; y < 100; y += 5) {
+    g.globalAlpha = .7; g.strokeStyle = hsl(22, 30, 11); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(74, y); g.lineTo(128, y - 4); g.stroke();
+    g.globalAlpha = .45; g.strokeStyle = hsl(30, 25, 32);
+    g.beginPath(); g.moveTo(74, y + 1.3); g.lineTo(128, y - 2.7); g.stroke();
+  }
+  g.globalAlpha = 1;
+  // window with a warm glow
+  poly(g, [[92, 68], [108, 66], [108, 80], [92, 82]], hsl(40, 60, 34));
+  g.strokeStyle = hsl(20, 30, 10); g.lineWidth = 1.2;
+  g.beginPath(); g.moveTo(100, 67); g.lineTo(100, 81); g.moveTo(92, 75); g.lineTo(108, 73); g.stroke();
+  // lit front gable with vertical boards
+  poly(g, [[18, 102], [18, 60], [46, 34], [74, 58], [74, 102]], hsl(28, 38, 36));
+  const topAt = x => x < 46 ? 60 - (x - 18) * (26 / 28) : 34 + (x - 46) * (24 / 28);
+  for (let x = 20; x < 74; x += 4.5) {
+    g.globalAlpha = .6; g.strokeStyle = hsl(25, 35, 20); g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x, topAt(x) + 1); g.lineTo(x, 102); g.stroke();
+    g.globalAlpha = .4; g.strokeStyle = hsl(35, 40, 54);
+    const y0 = rr(topAt(x + 1.5) + 2, 90);
+    g.beginPath(); g.moveTo(x + 1.6, y0); g.lineTo(x + 1.6, y0 + rr(5, 14)); g.stroke();
+  }
+  g.globalAlpha = 1;
+  poly(g, [[38, 102], [38, 76], [53, 76], [53, 102]], hsl(20, 30, 12));
+  g.strokeStyle = hsl(32, 30, 45); g.lineWidth = 1; g.beginPath(); g.moveTo(38, 102); g.lineTo(38, 76); g.lineTo(53, 76); g.stroke();
+  // roof
+  poly(g, [[46, 30], [104, 24], [134, 55], [76, 60]], hsl(20, 12, 17));
+  for (let k = 0; k <= 40; k++) {
+    const u = k / 40;
+    const ax = lerp(46, 104, u), ay = lerp(30, 24, u), bx = lerp(76, 134, u), by = lerp(60, 55, u);
+    bristle(g, ax, ay, bx, by, 1.6, hsl(25, 10, rr(22, 42)), .5, 1);
+  }
+  g.strokeStyle = hsl(30, 20, 48); g.lineWidth = 3;
+  g.beginPath(); g.moveTo(46, 29); g.lineTo(12, 64); g.stroke();
+  g.strokeStyle = hsl(28, 18, 30); g.lineWidth = 2.5;
+  g.beginPath(); g.moveTo(46, 29); g.lineTo(79, 61); g.stroke();
+  // chimney
+  poly(g, [[106, 12], [117, 11], [117, 40], [106, 41]], hsl(15, 10, 35));
+  for (let k = 0; k < 16; k++) {
+    g.fillStyle = rand() < .5 ? hsl(20, 10, rr(45, 55)) : hsl(15, 10, rr(18, 25));
+    g.fillRect(rr(106, 114), rr(12, 38), rr(2, 4), rr(1.5, 3));
+  }
+  return c;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Trees and bushes (sprites that sway in the wind)
+ * ------------------------------------------------------------------ */
+function makePine(h, haze = 0) {
+  const wd = Math.ceil(h * .62 + 24), ht = Math.ceil(h + 12);
+  const c = mk(wd, ht), g = c.getContext('2d');
+  const cx = wd / 2, top = 6, base = top + h;
+  g.lineCap = 'round';
+  g.strokeStyle = hsl(25, 30, 12 + haze * 20); g.lineWidth = Math.max(1, h * .014);
+  g.beginPath(); g.moveTo(cx, base + 4); g.lineTo(cx, top + h * .05); g.stroke();
+  const tiers = clamp(Math.round(h / 45), 5, 15), phase = rand();
+  const step = Math.max(.8, h / 260), per = 2 + Math.floor(h / 150), big = h > 300 ? 1.6 : 1;
+  const widthAt = t => {
+    const tier = (t * tiers + phase) % 1;
+    return h * .24 * Math.pow(t, .9) * (.62 + .38 * tier) * (.9 + .2 * N1(t * 7 + phase * 10)) + 1;
+  };
+  for (let y = top; y < base; y += step) {
+    const t = (y - top) / h, hw = widthAt(t);
+    for (const side of [-1, 1]) for (let k = 0; k < per; k++) {
+      const len = hw * rr(.5, 1.05);
+      g.strokeStyle = hsl(rr(135, 165), rr(20, 38) - haze * 10, rr(7, 15) + haze * 25);
+      g.globalAlpha = rr(.7, 1); g.lineWidth = rr(.7, 1.6) * big;
+      g.beginPath(); g.moveTo(cx + side * rr(0, 2), y + rr(-1, 1)); g.lineTo(cx + side * len, y + len * rr(.2, .45)); g.stroke();
+    }
+  }
+  for (let y = top + h * .03; y < base; y += step * 1.2) {
+    const t = (y - top) / h, hw = widthAt(t), tier = (t * tiers + phase) % 1;
+    if (tier < .35) continue;
+    for (let k = 0; k < per; k++) {
+      if (rand() < .6) {
+        const a0 = hw * rr(.15, .5), a1 = hw * rr(.6, 1.05);
+        g.strokeStyle = hsl(rr(72, 100), rr(32, 46) - haze * 15, rr(22, 34) + haze * 16);
+        g.globalAlpha = rr(.6, .95); g.lineWidth = rr(.6, 1.3) * big;
+        g.beginPath(); g.moveTo(cx - a0, y + a0 * .3); g.lineTo(cx - a1, y + a1 * rr(.25, .45)); g.stroke();
+      }
+      if (rand() < .35) {
+        const a0 = hw * rr(.3, .6), a1 = hw * rr(.7, 1);
+        g.strokeStyle = hsl(rr(110, 130), 30 - haze * 10, rr(18, 26) + haze * 20);
+        g.globalAlpha = rr(.5, .85); g.lineWidth = rr(.6, 1.2) * big;
+        g.beginPath(); g.moveTo(cx + a0, y + a0 * .3); g.lineTo(cx + a1, y + a1 * rr(.25, .45)); g.stroke();
+      }
+    }
+  }
+  g.globalAlpha = 1;
+  return { c, ax: cx, base, hw: h * .26 };
+}
+
+function foliageCluster(g, x, y, r, dens = 1) {
+  const dot = (cx, cy, rad, col, a) => { g.globalAlpha = a; g.fillStyle = col; g.beginPath(); g.arc(cx, cy, rad, 0, 7); g.fill(); };
+  const pick = (bias) => {
+    for (;;) {
+      const dx = rr(-1, 1), dy = rr(-1, 1);
+      if (dx * dx + dy * dy > 1) continue;
+      if (bias && (dx + dy) > bias) continue;
+      return [x + dx * r, y + dy * r * .85];
+    }
+  };
+  for (let i = 0; i < 260 * dens; i++) { const [px, py] = pick(0); dot(px, py, rr(1.2, 3), hsl(rr(100, 130), 35, rr(9, 17)), rr(.6, 1)); }
+  for (let i = 0; i < 150 * dens; i++) { const [px, py] = pick(.3); dot(px, py, rr(1, 2.6), hsl(rr(85, 105), 40, rr(24, 33)), rr(.6, .9)); }
+  for (let i = 0; i < 80 * dens; i++) { const [px, py] = pick(-.4); dot(px, py, rr(.9, 2.2), hsl(rr(60, 82), 55, rr(45, 58)), rr(.6, .9)); }
+  g.globalAlpha = 1;
+}
+function makeLeafy(h) {
+  const wd = Math.ceil(h * .95), ht = Math.ceil(h + 10);
+  const c = mk(wd, ht), g = c.getContext('2d');
+  const cx = wd / 2, base = h + 4;
+  g.lineCap = 'round';
+  g.strokeStyle = hsl(25, 25, 16); g.lineWidth = h * .045;
+  g.beginPath(); g.moveTo(cx, base); g.quadraticCurveTo(cx - 3, base - h * .35, cx + 2, base - h * .62); g.stroke();
+  g.lineWidth = h * .018;
+  for (let k = 0; k < 5; k++) {
+    const sy = base - h * rr(.35, .6), side = k % 2 ? 1 : -1;
+    g.beginPath(); g.moveTo(cx, sy); g.lineTo(cx + side * h * rr(.15, .3), sy - h * rr(.12, .25)); g.stroke();
+  }
+  const cl = [];
+  for (let k = 0; k < 8; k++) cl.push([cx + rr(-.3, .3) * h, base - h * .62 + rr(-.25, .2) * h, h * rr(.13, .2)]);
+  cl.sort((a, b) => b[1] - a[1]);
+  for (const [x, y, r] of cl) foliageCluster(g, x, y, r, r / 20);
+  return { c, ax: cx, base, hw: h * .4 };
+}
+function makeBush(w, h) {
+  const c = mk(w + 20, h + 20), g = c.getContext('2d');
+  const base = h + 14, n = Math.max(3, Math.round(w / 28));
+  for (let k = 0; k < n; k++) {
+    const x = 10 + (k + .5) / n * w + rr(-6, 6), r = h * rr(.35, .55);
+    foliageCluster(g, x, base - r * .9, r, Math.max(.35, r / 22));
+  }
+  return { c, ax: (w + 20) / 2, base, hw: w / 2 };
+}
+
+function drawSway(g, tr, t) {
+  const spr = tr.spr, c = spr.c, cw = c.width, chh = c.height;
+  const step = chh > 220 ? 3 : 2;
+  const w = wind(t, tr.x), top = tr.base - spr.base, dx = tr.x - spr.ax;
+  for (let r = 0; r < chh; r += step) {
+    const f = Math.max(0, (spr.base - r) / spr.base);
+    const off = (w * tr.amp + Math.sin(t * 2.3 + tr.ph + r * .04) * tr.amp * .12) * f * f;
+    g.drawImage(c, 0, r, cw, step, dx + off, top + r, cw, step);
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ *  Brush-reveal paths: each layer is "painted" by strokes along a path
+ * ------------------------------------------------------------------ */
+function seg(x1, y1, x2, y2, w, pen) {
+  const len = Math.hypot(x2 - x1, y2 - y1), br = [];
+  if (pen) for (let i = 0; i < 6; i++) br.push({ o: (i % 2 ? 1 : -1) * rr(.28, .56) * w, lw: rr(1.5, 4.5), a: rr(.5, 1) });
+  return { x1, y1, x2, y2, w, pen, len, wl: pen ? len : len * .35, br };
+}
+function PB() {
+  return {
+    segs: [], last: null,
+    move(x, y) { if (this.last) this.segs.push(seg(this.last[0], this.last[1], x, y, 0, false)); this.last = [x, y]; return this; },
+    line(x, y, w) { if (!this.last) { this.last = [x, y]; return this; } this.segs.push(seg(this.last[0], this.last[1], x, y, w, true)); this.last = [x, y]; return this; },
+    done() {
+      let c = 0;
+      for (const s of this.segs) { s.cum = c; c += s.wl; }
+      this.total = c || 1;
+      this.start = this.segs.length ? [this.segs[0].x1, this.segs[0].y1] : [W / 2, H / 2];
+      this.end = this.last || this.start;
+      return this;
+    },
+    at(len) {
+      const S = this.segs; if (!S.length) return { x: this.start[0], y: this.start[1], pen: false };
+      let lo = 0, hi = S.length - 1;
+      while (lo < hi) { const m = (lo + hi + 1) >> 1; if (S[m].cum <= len) lo = m; else hi = m - 1; }
+      const s = S[lo], f = s.wl ? clamp((len - s.cum) / s.wl, 0, 1) : 1;
+      return { x: lerp(s.x1, s.x2, f), y: lerp(s.y1, s.y2, f), pen: s.pen };
+    },
+  };
+}
+function zigRect(p, x0, y0, x1, y1, w, jit = 10) {
+  const step = w * .62; let dir = 1, first = true;
+  for (let y = y0; y <= y1 + step * .5; y += step) {
+    const xa = dir > 0 ? x0 : x1, xb = dir > 0 ? x1 : x0;
+    if (first) { p.move(xa, y); first = false; } else p.line(xa, y, w);
+    const n = Math.max(1, Math.round(Math.abs(xb - xa) / 90));
+    for (let k = 1; k <= n; k++) p.line(lerp(xa, xb, k / n), y + rr(-jit, jit), w);
+    dir = -dir;
+  }
+}
+function crissRect(p, x0, y0, x1, y1, w) {
+  const step = w * .7; let dir = 1, first = true;
+  for (let y = y0; y <= y1; y += step) {
+    const xa = dir > 0 ? x0 : x1, xb = dir > 0 ? x1 : x0;
+    if (first) { p.move(xa, y); first = false; } else p.line(xa, y, w);
+    const n = Math.round(Math.abs(xb - xa) / 46);
+    for (let k = 1; k <= n; k++) p.line(lerp(xa, xb, k / n), y + (k % 2 ? -w * .45 : w * .45), w);
+    dir = -dir;
+  }
+}
+function ridgeSweep(p, pts, x0, x1, yB, w, lift = 0) {
+  const step = w * .62; let dir = 1, first = true;
+  let minY = Infinity;
+  for (const q of pts) if (q[0] >= x0 && q[0] <= x1) minY = Math.min(minY, q[1]);
+  minY -= lift;
+  for (let off = -w * .3; ; off += step) {
+    const n = Math.max(2, Math.round((x1 - x0) / 30));
+    for (let k = 0; k <= n; k++) {
+      const x = lerp(x0, x1, dir > 0 ? k / n : 1 - k / n);
+      const y = Math.min(yB, ridgeY(pts, x) - lift + off);
+      if (k === 0) { if (first) { p.move(x, y); first = false; } else p.line(x, y, w); }
+      else p.line(x, y, w);
+    }
+    dir = -dir;
+    if (minY + off >= yB) break;
+  }
+}
+function treeZig(p, x, top, base, maxHW, w) {
+  p.move(x, top - 6);
+  const step = w * .55; let dir = 1;
+  for (let y = top; y <= base + step; y += step) {
+    const t = clamp((y - top) / (base - top), 0, 1);
+    p.line(x + dir * (maxHW * t + 8), y, w);
+    dir = -dir;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ *  Build the scene
+ * ------------------------------------------------------------------ */
+let blankC, skyC, farC, mtnC, snowC, mistStaticC, mistSprite, hillsC, lakeTex, landC, streamC, cabinC, bgStatic, overlayC;
+const horizonDashes = [], clouds = [], midTrees = [], bigTrees = [], foreBushes = [], grass = [], lakeLines = [], flow = [], wfLines = [];
+const maskC = mk(), mctx = maskC.getContext('2d');
+const scratchC = mk(), sctx = scratchC.getContext('2d');
+
+function paintOverlay() {
+  const c = mk(), g = c.getContext('2d');
+  for (let y = 0; y < H; y += 3) { g.fillStyle = `rgba(0,0,0,${rr(.018, .04)})`; g.fillRect(0, y, W, 1); }
+  for (let x = 0; x < W; x += 3) { g.fillStyle = `rgba(255,255,255,${rr(.015, .035)})`; g.fillRect(x, 0, 1, H); }
+  for (let i = 0; i < 22000; i++) {
+    g.fillStyle = rand() < .5 ? 'rgba(0,0,0,.05)' : 'rgba(255,255,255,.05)';
+    g.fillRect(rr(0, W), rr(0, H), 1, 1);
+  }
+  const v = g.createRadialGradient(W / 2, H / 2, H * .45, W / 2, H / 2, H * .95);
+  v.addColorStop(0, 'rgba(30,20,10,0)'); v.addColorStop(1, 'rgba(30,20,10,.28)');
+  g.fillStyle = v; g.fillRect(0, 0, W, H);
+  return c;
+}
+
+function build() {
+  blankC = paintBlank();
+  skyC = paintSky();
+  for (const [x, y, w, h] of [[110, 85, 260, 70], [430, 62, 200, 55], [740, 110, 300, 80], [1040, 72, 220, 60], [240, 215, 240, 55], [900, 245, 200, 45]]) {
+    const c = makeCloud(w, h);
+    clouds.push({ c, x0: x, y, w, h, speed: rr(4, 9), alpha: y > 180 ? .8 : .95 });
+  }
+  farC = paintFar();
+  mtnC = paintMtn();
+  snowC = paintSnow(mtnC);
+  mistStaticC = paintMistStatic();
+  mistSprite = paintMistSprite();
+  hillsC = paintHills();
+
+  bgStatic = mk();
+  const b = bgStatic.getContext('2d');
+  for (const c of [skyC, farC, mtnC, snowC, mistStaticC, hillsC]) b.drawImage(c, 0, 0);
+
+  lakeTex = paintLakeTex();
+  for (let x = rr(0, 30); x < W; x += rr(30, 110)) horizonDashes.push([x, rr(8, 40)]);
+  for (let i = 0; i < 110; i++) {
+    const y = rr(HORIZON + 2, 580), nearGlow = rand() < .4;
+    lakeLines.push({ x: nearGlow ? rr(GX - 90, GX + 90) : rr(0, W), y, len: rr(6, 40) * (1 + (y - HORIZON) / 80), a: rr(.2, .55), f: rr(.6, 1.8), p: rr(0, 6) });
+  }
+  landC = paintLand();
+  streamC = paintStream();
+  for (let i = 0; i < 170; i++) flow.push(newFlow(true));
+  for (let i = 0; i < 16; i++) wfLines.push({ x: lerp(wfL + 3, wfR - 3, (i + .5) / 16), dash: [rr(4, 10), rr(2, 6)], sp: rr(30, 50), a: rr(.4, .8), w: rr(1, 2.2) });
+  cabinC = makeCabin();
+
+  const midSpecs = [
+    [268, 585, 70], [300, 588, 90], [345, 592, 120], [372, 598, 160], [402, 590, 95], [430, 600, 140], [468, 604, 110], [500, 598, 80], [545, 600, 60],
+    [735, 602, 95], [760, 606, 150], [790, 612, 115], [815, 605, 80],
+    [1012, 612, 100], [1030, 604, 190], [1065, 598, 150], [1100, 610, 120],
+  ];
+  for (const [x, base, h] of midSpecs) midTrees.push({ spr: makePine(h, .15), x, base, amp: h * .016, ph: rr(0, 6), h });
+  midTrees.push({ spr: makeLeafy(110), x: 590, base: 614, amp: 2, ph: rr(0, 6), h: 110 });
+  for (const [x, base, w, h] of [[440, 614, 70, 30], [780, 622, 80, 30], [1050, 622, 90, 34], [250, 600, 80, 30]]) {
+    midTrees.push({ spr: makeBush(w, h), x, base, amp: 1.2, ph: rr(0, 6), h, bush: true });
+  }
+  midTrees.sort((a, b) => a.base - b.base);
+
+  for (const [x, base, h] of [[30, 790, 600], [95, 800, 700], [190, 810, 640], [240, 782, 460], [1050, 780, 470], [1120, 805, 690], [1185, 795, 600]]) {
+    bigTrees.push({ spr: makePine(h, 0), x, base, amp: h * .012, ph: rr(0, 6), h });
+  }
+  bigTrees.sort((a, b) => a.base - b.base);
+
+  for (const [x, base, w, h] of [[60, 804, 200, 90], [210, 808, 180, 80], [820, 808, 150, 60], [940, 804, 220, 90], [1140, 808, 200, 80]]) {
+    foreBushes.push({ spr: makeBush(w, h), x, base, amp: 2.2, ph: rr(0, 6), w, h });
+  }
+  for (let i = 0; i < 950; i++) {
+    const y = rr(712, 805), x = rr(0, W);
+    const [el, er] = streamEdgesAtY(Math.min(y, 845));
+    if (x > el - 6 && x < er + 6) continue;
+    grass.push({ x, y, h: (6 + (y - 712) * .25) * rr(.6, 1.3), lean: rr(-4, 4), c: rand() < .4 ? 0 : rand() < .6 ? 1 : 2, ph: rr(0, 6) });
+  }
+  overlayC = paintOverlay();
+}
+
+/* ------------------------------------------------------------------ *
+ *  Living elements
+ * ------------------------------------------------------------------ */
+function newFlow(init) {
+  return { s: init ? rr(S_FLOW, 1) : rr(S_FLOW, S_FLOW + .03), u: rr(-.9, .9), sp: rr(.025, .05), len: rr(.5, 1.2), life: init ? rr(0, 3) : 0, max: rr(2, 5) };
+}
+const birds = []; let nextFlock = 2;
+function spawnFlock() {
+  const dir = rand() < .5 ? 1 : -1, y = rr(90, 260), n = 2 + (rand() * 4 | 0), size = rr(5, 10), sp = rr(28, 45);
+  const x0 = dir > 0 ? -40 : W + 40;
+  for (let i = 0; i < n; i++) {
+    birds.push({ x: x0 - dir * i * rr(18, 30), y: y + (i % 2 ? 1 : -1) * i * rr(5, 9), vx: dir * sp * rr(.95, 1.05), size: size * rr(.85, 1.1), ph: rr(0, 6), fr: rr(7, 10), bob: rr(0, 6) });
+  }
+}
+const smoke = []; let smokeT = 0;
+const SMX = CABX + 111.5, SMY = CABY - 102 + 10;
+const motes = [];
+for (let i = 0; i < 36; i++) motes.push({ x: rr(0, W), y: rr(300, 780), vx: rr(-4, 4), vy: rr(-6, -1), ph: rr(0, 6), r: rr(.8, 2) });
+
+/* ------------------------------------------------------------------ *
+ *  Layer draw functions
+ * ------------------------------------------------------------------ */
+function drawSky(g, t) {
+  g.drawImage(skyC, 0, 0);
+  const a = .07 + .05 * Math.sin(t * .4);
+  const gr = g.createRadialGradient(GX, GY, 0, GX, GY, 300);
+  gr.addColorStop(0, `rgba(255,246,220,${a})`); gr.addColorStop(1, 'rgba(255,246,220,0)');
+  g.fillStyle = gr; g.fillRect(GX - 300, GY - 300, 600, 600);
+}
+function drawClouds(g, t) {
+  const L = layerByName.clouds, d = L.doneAt != null ? t - L.doneAt : 0, span = W + 500;
+  for (const cl of clouds) {
+    const x = ((cl.x0 + cl.speed * d + 250) % span + span) % span - 250;
+    g.globalAlpha = cl.alpha;
+    g.drawImage(cl.c, x - cl.c.width / 2, cl.y - cl.c.height / 2);
+  }
+  g.globalAlpha = 1;
+}
+function drawMist(g, t) {
+  g.drawImage(mistStaticC, 0, 0);
+  g.globalAlpha = .85; g.drawImage(mistSprite, -((t * 5) % 1200), 330);
+  g.globalAlpha = .5; g.drawImage(mistSprite, -((t * 2.6 + 600) % 1200), 355);
+  g.globalAlpha = 1;
+}
+function drawLake(g, t) {
+  const y1 = 625;
+  for (let y = HORIZON; y < y1; y += 2) {
+    const d = y - HORIZON, sy = HORIZON - d * 1.4 - 2;
+    if (sy < 0) break;
+    const dx = Math.sin(t * 1.3 + y * .45) * (.6 + d * .03) + Math.sin(t * .7 + y * .13) * .8;
+    g.drawImage(bgStatic, 0, sy, W, 2.8, dx - 3, y, W + 6, 2);
+  }
+  const gr = g.createLinearGradient(0, HORIZON, 0, y1);
+  gr.addColorStop(0, 'rgba(150,175,198,.28)'); gr.addColorStop(1, 'rgba(40,70,92,.45)');
+  g.fillStyle = gr; g.fillRect(0, HORIZON, W, y1 - HORIZON);
+  g.drawImage(lakeTex, 0, 0);
+  g.fillStyle = 'rgba(244,244,238,.28)';
+  for (const [x, len] of horizonDashes) g.fillRect(x, HORIZON, len, 1.2);
+  g.fillStyle = 'rgb(250,248,238)';
+  for (const l of lakeLines) {
+    g.globalAlpha = l.a * (.35 + .65 * Math.max(0, Math.sin(t * l.f + l.p)));
+    g.fillRect(l.x + Math.sin(t * .3 + l.p) * 5, l.y, l.len, 1.2);
+  }
+  g.globalAlpha = 1;
+}
+function drawStream(g, t) {
+  g.drawImage(streamC.base, 0, 0);
+  g.save(); g.clip(streamPath);
+  g.lineCap = 'round';
+  for (const f of flow) {
+    const [x, y] = streamAt(f.s, f.u);
+    const a = Math.sin(Math.PI * clamp(f.life / f.max, 0, 1)) * .55, L = (5 + 34 * f.s) * f.len;
+    g.strokeStyle = `rgba(238,246,250,${a})`; g.lineWidth = .8 + 2.2 * f.s;
+    g.beginPath(); g.moveTo(x - L / 2, y); g.lineTo(x + L / 2, y + L * .04); g.stroke();
+  }
+  g.strokeStyle = 'rgba(240,246,248,.5)'; g.lineWidth = 1.2;
+  for (const r of streamRocks) {
+    const ph = (t * .5 + r.ph) % 1, w = r.rw * (1.05 + ph * .7);
+    g.globalAlpha = .7 * (1 - ph);
+    g.beginPath(); g.ellipse(r.x, r.y + r.rh * .2, w, w * .16, 0, 0, Math.PI); g.stroke();
+  }
+  g.globalAlpha = 1;
+  for (const l of wfLines) {
+    g.setLineDash(l.dash); g.lineDashOffset = -t * l.sp;
+    g.strokeStyle = `rgba(240,246,250,${l.a})`; g.lineWidth = l.w;
+    g.beginPath(); g.moveTo(l.x, WF0); g.lineTo(l.x + .6, WF1); g.stroke();
+  }
+  g.setLineDash([]);
+  for (let k = 0; k < 26; k++) {
+    const x = lerp(wfL, wfR, k / 25) + Math.sin(t * 3 + k) * 1.5, y = WF1 + 1 + Math.sin(t * 4 + k * 1.7) * 1.2;
+    const r = 2.5 + 1.8 * Math.sin(t * 5 + k * 2.3) ** 2;
+    g.fillStyle = 'rgba(246,249,250,.7)'; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill();
+  }
+  g.restore();
+  g.drawImage(streamC.top, 0, 0);
+}
+function drawCabin(g) { g.drawImage(cabinC, CABX, CABY - 102); }
+function drawTrees(list) { return (g, t) => { for (const tr of list) drawSway(g, tr, t); }; }
+const GRASS_COLS = [hsl(110, 40, 13), hsl(95, 40, 28), hsl(75, 50, 48)];
+function drawFore(g, t) {
+  for (const b of foreBushes) drawSway(g, b, t);
+  g.lineWidth = 1.2; g.lineCap = 'round';
+  for (let c = 0; c < 3; c++) {
+    g.strokeStyle = GRASS_COLS[c]; g.beginPath();
+    for (const bl of grass) {
+      if (bl.c !== c) continue;
+      const sway = wind(t, bl.x) * bl.h * .25 + Math.sin(t * 3 + bl.ph) * bl.h * .05;
+      g.moveTo(bl.x, bl.y);
+      g.quadraticCurveTo(bl.x + bl.lean * .5, bl.y - bl.h * .6, bl.x + bl.lean + sway, bl.y - bl.h);
+    }
+    g.stroke();
+  }
+}
+
+/* "After" passes: living details drawn once a layer is finished. */
+function drawBirds(g, t) {
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (const b of birds) {
+    const glide = Math.sin(t * .6 + b.bob) > .2;
+    const wing = glide ? .25 + .08 * Math.sin(b.ph * .3) : Math.sin(b.ph);
+    const s = b.size, x = b.x, y = b.y + Math.sin(t * .8 + b.bob) * 3;
+    g.strokeStyle = 'rgba(40,40,55,.75)'; g.lineWidth = .9 + s * .12;
+    g.beginPath();
+    g.moveTo(x - s, y - wing * s * .8);
+    g.quadraticCurveTo(x - s * .4, y - s * .35 - wing * s * .3, x, y);
+    g.quadraticCurveTo(x + s * .4, y - s * .35 - wing * s * .3, x + s, y - wing * s * .8);
+    g.stroke();
+  }
+}
+function drawSmoke(g, t) {
+  for (const p of smoke) {
+    const a = .3 * Math.min(1, p.life * 2) * (1 - p.life / p.max);
+    g.fillStyle = `rgba(226,226,232,${a})`;
+    g.beginPath(); g.arc(p.x, p.y, p.r, 0, 7); g.fill();
+  }
+  const a = .12 + .06 * Math.sin(t * 2.1) + .03 * Math.sin(t * 7.3);
+  const gr = g.createRadialGradient(CABX + 100, CABY - 102 + 74, 0, CABX + 100, CABY - 102 + 74, 16);
+  gr.addColorStop(0, `rgba(255,200,110,${a})`); gr.addColorStop(1, 'rgba(255,200,110,0)');
+  g.fillStyle = gr; g.fillRect(CABX + 80, CABY - 50, 40, 40);
+}
+function drawMotes(g, t) {
+  for (const m of motes) {
+    g.fillStyle = `rgba(255,248,215,${.2 + .2 * Math.sin(t * 1.5 + m.ph)})`;
+    g.beginPath(); g.arc(m.x, m.y, m.r, 0, 7); g.fill();
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ *  Layers in painting order
+ * ------------------------------------------------------------------ */
+const layers = [];
+const layerByName = {};
+function addLayer(o) { o.done = false; o.doneAt = null; layers.push(o); layerByName[o.name] = o; }
+
+function defineLayers() {
+  let p;
+  p = PB(); crissRect(p, -40, 10, W + 40, 500, 92);
+  addLayer({ name: 'sky', dur: 4, tool: 'brush', paint: 'rgb(90,130,180)', caption: "Let's start with a soft, happy little sky.", path: p.done(), draw: drawSky });
+
+  p = PB();
+  for (const cl of clouds) zigRect(p, cl.x0 - cl.w / 2 - 30, cl.y - cl.h / 2 - 15, cl.x0 + cl.w / 2 + 30, cl.y + cl.h / 2 + 20, 42, 4);
+  addLayer({ name: 'clouds', dur: 2.6, tool: 'brush', paint: 'rgb(246,246,250)', caption: 'Maybe a few little clouds live up here. Just let them float.', path: p.done(), draw: drawClouds });
+
+  p = PB(); ridgeSweep(p, farR, -20, W + 20, 478, 46);
+  addLayer({ name: 'far', dur: 2.2, tool: 'knife', paint: 'rgb(160,166,196)', caption: 'Way back in the distance, some quiet, misty mountains.', path: p.done(), draw: g => g.drawImage(farC, 0, 0) });
+
+  p = PB(); ridgeSweep(p, mtnR, 60, 1180, 478, 62);
+  addLayer({ name: 'mountain', dur: 2.8, tool: 'knife', paint: 'rgb(52,56,82)', caption: 'Now a big, strong, majestic mountain.', path: p.done(), draw: g => g.drawImage(mtnC, 0, 0) });
+
+  p = PB();
+  for (let d = 0; d <= 620; d += 22) for (const side of [-1, 1]) {
+    const x = 560 + side * d; if (x < 60 || x > 1180 || (d === 0 && side > 0)) continue;
+    const y = ridgeY(mtnR, x), depth = clamp((476 - y) / 330, 0, 1), L = 30 + depth * 140;
+    const ang = side < 0 ? 2.05 : 1.1;
+    p.move(x, y - 4); p.line(x + Math.cos(ang) * L, y + Math.sin(ang) * L, 34);
+  }
+  addLayer({ name: 'snow', dur: 2.8, tool: 'knife', paint: 'rgb(250,250,246)', caption: 'Let the knife glide&hellip; a little snow catching the light.', path: p.done(), draw: g => g.drawImage(snowC, 0, 0) });
+
+  p = PB(); zigRect(p, -20, 350, W + 20, 478, 44, 6);
+  addLayer({ name: 'mist', dur: 1.6, tool: 'brush', paint: 'rgb(236,238,242)', caption: 'Tap in some soft mist at the base. Mountains love mist.', path: p.done(), draw: drawMist, after: drawBirds });
+
+  p = PB(); ridgeSweep(p, hillR, -20, W + 20, 476, 40, 45);
+  addLayer({ name: 'hills', dur: 2.8, tool: 'fan', paint: 'rgb(50,78,80)', caption: 'Little trees way back there &mdash; just tap them in.', path: p.done(), draw: g => g.drawImage(hillsC, 0, 0) });
+
+  p = PB(); zigRect(p, -20, HORIZON - 2, W + 20, 585, 50, 3);
+  addLayer({ name: 'lake', dur: 2.2, tool: 'brush', paint: 'rgb(150,175,198)', caption: 'A calm lake to hold all those reflections.', path: p.done(), draw: drawLake });
+
+  p = PB(); zigRect(p, -20, 545, W + 20, 810, 80, 8);
+  addLayer({ name: 'land', dur: 2.8, tool: 'brush', paint: 'rgb(110,140,60)', caption: 'Give the land some soft, rolling little hills.', path: p.done(), draw: g => g.drawImage(landC, 0, 0) });
+
+  p = PB(); p.move(SP[0].lx, SP[0].ly - 6);
+  for (let i = 0; i < SN; i += 5) {
+    const q = SP[i], left = (i / 5) % 2 === 0, w = 28 + 46 * q.s;
+    p.line(left ? q.lx + q.nx * 10 : q.rx - q.nx * 10, left ? q.ly + q.ny * 10 : q.ry - q.ny * 10, w);
+  }
+  addLayer({ name: 'stream', dur: 2.8, tool: 'brush', paint: 'rgb(170,196,210)', caption: 'And a little stream, wandering wherever it wants to go.', path: p.done(), draw: drawStream });
+
+  p = PB(); zigRect(p, CABX + 5, CABY - 100, CABX + 140, CABY + 6, 30, 2);
+  addLayer({ name: 'cabin', dur: 1.8, tool: 'knife', paint: 'rgb(100,70,45)', caption: 'Every scene needs a cozy little cabin.', path: p.done(), draw: drawCabin, after: drawSmoke });
+
+  p = PB();
+  for (const tr of midTrees) {
+    if (tr.bush) zigRect(p, tr.x - tr.spr.hw - 8, tr.base - tr.h - 8, tr.x + tr.spr.hw + 8, tr.base + 4, 26, 2);
+    else treeZig(p, tr.x, tr.base - tr.h, tr.base, tr.spr.hw, Math.max(24, tr.h * .2));
+  }
+  addLayer({ name: 'mid', dur: 3.6, tool: 'fan', paint: 'rgb(30,52,36)', caption: 'Happy little trees. Every tree needs a friend.', path: p.done(), draw: drawTrees(midTrees) });
+
+  p = PB();
+  for (const tr of bigTrees) treeZig(p, tr.x, tr.base - tr.h, tr.base, tr.spr.hw, Math.max(40, tr.h * .1));
+  addLayer({ name: 'big', dur: 4.2, tool: 'fan', paint: 'rgb(18,36,24)', caption: 'Big, bold trees right up front. Be brave.', path: p.done(), draw: drawTrees(bigTrees) });
+
+  p = PB();
+  for (const b of foreBushes) zigRect(p, b.x - b.w / 2 - 10, b.base - b.h - 10, b.x + b.w / 2 + 10, b.base, 34, 3);
+  zigRect(p, -10, 690, W + 10, 805, 40, 4);
+  addLayer({ name: 'fore', dur: 3.2, tool: 'brush', paint: 'rgb(140,170,70)', caption: 'A few bushes and some grass to finish it off.', path: p.done(), draw: drawFore, after: drawMotes });
+}
+const FINAL_CAPTION = 'There. A happy little world, all alive. Enjoy it.';
+
+/* ------------------------------------------------------------------ *
+ *  Painting timeline
+ * ------------------------------------------------------------------ */
+const GAP = .38;
+let stage = 0, stageT = 0, gap = 0, delay = 1.2, outro = -1, tool = null;
+const OFF = [W + 180, H + 160];
+
+let captionTimer = null;
+function setCaption(text) {
+  captionEl.style.opacity = 0;
+  clearTimeout(captionTimer);
+  captionTimer = setTimeout(() => { captionEl.innerHTML = text; captionEl.style.opacity = 1; }, 300);
+}
+function startLayer(i) {
+  const L = layers[i];
+  mctx.clearRect(0, 0, W, H);
+  L.di = 0; L.df = 0; L.cur = 0;
+  setCaption(L.caption);
+}
+function maskSeg(s, f0, f1) {
+  const x1 = lerp(s.x1, s.x2, f0), y1 = lerp(s.y1, s.y2, f0), x2 = lerp(s.x1, s.x2, f1), y2 = lerp(s.y1, s.y2, f1);
+  const nx = -(s.y2 - s.y1) / (s.len || 1), ny = (s.x2 - s.x1) / (s.len || 1);
+  mctx.lineCap = 'round'; mctx.strokeStyle = '#000';
+  mctx.globalAlpha = 1; mctx.lineWidth = s.w * .78;
+  mctx.beginPath(); mctx.moveTo(x1, y1); mctx.lineTo(x2, y2); mctx.stroke();
+  for (const b of s.br) {
+    mctx.globalAlpha = b.a; mctx.lineWidth = b.lw;
+    mctx.beginPath(); mctx.moveTo(x1 + nx * b.o, y1 + ny * b.o); mctx.lineTo(x2 + nx * b.o, y2 + ny * b.o); mctx.stroke();
+  }
+  mctx.globalAlpha = 1;
+}
+function advanceMask(L, len) {
+  const S = L.path.segs;
+  while (L.di < S.length) {
+    const s = S[L.di];
+    const to = s.wl ? Math.min(1, (len - s.cum) / s.wl) : 1;
+    if (to <= L.df) break;
+    if (s.pen) maskSeg(s, L.df, to);
+    if (to >= 1) { L.di++; L.df = 0; } else { L.df = to; break; }
+  }
+}
+
+function update(dt, t) {
+  if (stage < layers.length) {
+    if (delay > 0) {
+      delay -= dt;
+      if (delay <= 0) startLayer(stage);
+    } else if (gap > 0) {
+      gap -= dt;
+      if (gap <= 0) startLayer(stage);
+    } else {
+      const L = layers[stage];
+      stageT += dt;
+      const p = Math.min(1, stageT / L.dur);
+      L.cur = p * L.path.total;
+      advanceMask(L, L.cur);
+      if (p >= 1) {
+        L.done = true; L.doneAt = t;
+        stage++; stageT = 0;
+        if (stage < layers.length) gap = GAP;
+        else { setCaption(FINAL_CAPTION); outro = 0; }
+      }
+    }
+  } else if (outro >= 0) {
+    outro += dt;
+  }
+
+  // stream and falls
+  for (let i = 0; i < flow.length; i++) {
+    const f = flow[i];
+    f.s += f.sp * dt * (.5 + f.s); f.life += dt;
+    if (f.s > 1 || f.life > f.max) flow[i] = newFlow(false);
+  }
+  // birds
+  if (layerByName.mist.done) {
+    nextFlock -= dt;
+    if (nextFlock <= 0) { spawnFlock(); nextFlock = rr(9, 18); }
+    for (let i = birds.length - 1; i >= 0; i--) {
+      const b = birds[i];
+      b.x += b.vx * dt; b.ph += b.fr * dt;
+      if (b.x < -80 || b.x > W + 80) birds.splice(i, 1);
+    }
+  }
+  // chimney smoke
+  if (layerByName.cabin.done) {
+    smokeT += dt;
+    while (smokeT > .16) { smokeT -= .16; smoke.push({ x: SMX + rr(-1, 1), y: SMY, r: rr(2, 3.5), life: 0, max: rr(5, 8), vx: rr(-2, 2) }); }
+  }
+  for (let i = smoke.length - 1; i >= 0; i--) {
+    const p = smoke[i];
+    p.life += dt;
+    p.x += (p.vx + 5 + wind(t, p.x) * 7) * dt * (.3 + p.life * .25);
+    p.y -= Math.max(3, 14 - p.life * .9) * dt;
+    p.r += dt * 3.2;
+    if (p.life > p.max) smoke.splice(i, 1);
+  }
+  // drifting motes of light
+  for (const m of motes) {
+    m.x += (m.vx + wind(t, m.x) * 6) * dt;
+    m.y += m.vy * dt + Math.sin(t + m.ph) * .2;
+    if (m.y < 280) { m.y = 790; m.x = rr(0, W); }
+    if (m.x < -10) m.x = W + 10; else if (m.x > W + 10) m.x = -10;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ *  The brush/knife that paints the picture
+ * ------------------------------------------------------------------ */
+function drawTool(g, x, y, kind, col, t, lift) {
+  g.save();
+  g.translate(x, y);
+  g.rotate(.62 + Math.sin(t * 2.2) * .05);
+  const sc = 1 + lift * .08; g.scale(sc, sc);
+  const hs = kind === 'brush' ? -66 : -60;
+  g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 10; g.shadowOffsetX = 10 + lift * 12; g.shadowOffsetY = 12 + lift * 12;
+  const hg = g.createLinearGradient(-5, 0, 5, 0);
+  hg.addColorStop(0, '#7a3f22'); hg.addColorStop(.4, '#9c5a34'); hg.addColorStop(1, '#4a2412');
+  g.fillStyle = hg;
+  g.beginPath(); g.moveTo(-5, hs); g.lineTo(5, hs); g.lineTo(3.5, -260); g.quadraticCurveTo(0, -266, -3.5, -260); g.closePath(); g.fill();
+  const fe = g.createLinearGradient(-12, 0, 12, 0);
+  fe.addColorStop(0, '#8d9298'); fe.addColorStop(.35, '#eef0f2'); fe.addColorStop(1, '#6b7076');
+  if (kind === 'knife') {
+    g.fillStyle = fe; g.fillRect(-4.5, -62, 9, 9);
+    g.shadowColor = 'transparent';
+    g.strokeStyle = '#9a9ea4'; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(0, -54); g.lineTo(0, -36); g.stroke();
+    const bg = g.createLinearGradient(-10, 0, 10, 0);
+    bg.addColorStop(0, '#e1e5ea'); bg.addColorStop(1, '#8d939a');
+    g.fillStyle = bg;
+    g.beginPath(); g.moveTo(0, -38); g.lineTo(9, -30); g.lineTo(2, 0); g.lineTo(-2, 0); g.lineTo(-9, -30); g.closePath(); g.fill();
+    g.fillStyle = col; g.globalAlpha = .9;
+    g.beginPath(); g.moveTo(-5.5, -16); g.lineTo(5.5, -16); g.lineTo(2, 0); g.lineTo(-2, 0); g.closePath(); g.fill();
+  } else if (kind === 'fan') {
+    g.fillStyle = fe; g.fillRect(-4.5, -62, 9, 24);
+    g.shadowColor = 'transparent';
+    g.fillStyle = col;
+    g.beginPath(); g.moveTo(-3, -40); g.lineTo(3, -40); g.lineTo(18, -5); g.quadraticCurveTo(0, 3, -18, -5); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = .8;
+    for (let k = -4; k <= 4; k++) { g.beginPath(); g.moveTo(k * .6, -39); g.lineTo(k * 4.2, -2); g.stroke(); }
+  } else {
+    g.fillStyle = fe; g.fillRect(-11, -68, 22, 27);
+    g.shadowColor = 'transparent';
+    g.fillStyle = col;
+    g.beginPath(); g.moveTo(-11, -42); g.lineTo(11, -42); g.lineTo(10, -3); g.quadraticCurveTo(0, 2, -10, -3); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.15)'; g.lineWidth = .8;
+    for (let k = -8; k <= 8; k += 2) { g.beginPath(); g.moveTo(k, -41); g.lineTo(k * .95, -3); g.stroke(); }
+  }
+  g.restore();
+}
+function toolState() {
+  if (stage < layers.length) {
+    const L = layers[stage];
+    if (delay > 0) {
+      const f = ease(clamp(1 - delay / 1.2, 0, 1));
+      return { x: lerp(OFF[0], L.path.start[0], f), y: lerp(OFF[1], L.path.start[1], f), kind: L.tool, col: L.paint, lift: 1 };
+    }
+    if (gap > 0) {
+      const P = layers[stage - 1], f = ease(1 - gap / GAP);
+      return { x: lerp(P.path.end[0], L.path.start[0], f), y: lerp(P.path.end[1], L.path.start[1], f), kind: f < .5 ? P.tool : L.tool, col: f < .5 ? P.paint : L.paint, lift: 1 };
+    }
+    const q = L.path.at(L.cur || 0);
+    return { x: q.x, y: q.y, kind: L.tool, col: L.paint, lift: q.pen ? 0 : 1 };
+  }
+  if (outro >= 0 && outro < 1.6) {
+    const P = layers[layers.length - 1], f = ease(outro / 1.6);
+    return { x: lerp(P.path.end[0], OFF[0], f), y: lerp(P.path.end[1], OFF[1], f), kind: P.tool, col: P.paint, lift: 1 };
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ *
+ *  Render loop
+ * ------------------------------------------------------------------ */
+function render(t) {
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(blankC, 0, 0);
+  const painting = delay <= 0 && gap <= 0;
+  for (let i = 0; i < layers.length; i++) {
+    const L = layers[i];
+    if (L.done) {
+      L.draw(ctx, t);
+      if (L.after) L.after(ctx, t);
+    } else {
+      if (i === stage && painting) {
+        sctx.clearRect(0, 0, W, H);
+        L.draw(sctx, t);
+        sctx.globalCompositeOperation = 'destination-in';
+        sctx.drawImage(maskC, 0, 0);
+        sctx.globalCompositeOperation = 'source-over';
+        ctx.drawImage(scratchC, 0, 0);
+      }
+      break;
+    }
+  }
+  ctx.drawImage(overlayC, 0, 0);
+  const ts = toolState();
+  if (ts) drawTool(ctx, ts.x, ts.y, ts.kind, ts.col, t, ts.lift);
+}
+
+let last = 0;
+function frame(now) {
+  const t = now / 1000;
+  const dt = last ? Math.min(.05, t - last) : 0;
+  last = t;
+  update(dt, t);
+  render(t);
+  requestAnimationFrame(frame);
+}
+
+function skip() {
+  const t = performance.now() / 1000;
+  for (const L of layers) if (!L.done) { L.done = true; L.doneAt = t; }
+  stage = layers.length; delay = 0; gap = 0; outro = 99;
+  setCaption(FINAL_CAPTION);
+}
+function replay() {
+  for (const L of layers) { L.done = false; L.doneAt = null; }
+  stage = 0; stageT = 0; gap = 0; delay = 1.2; outro = -1;
+  birds.length = 0; smoke.length = 0; nextFlock = 2;
+  mctx.clearRect(0, 0, W, H);
+  setCaption('A fresh canvas, all wet and ready.');
+}
+document.getElementById('skip').addEventListener('click', skip);
+document.getElementById('replay').addEventListener('click', replay);
+
+setTimeout(() => {
+  build();
+  defineLayers();
+  setCaption('A fresh canvas, all wet and ready.');
+  requestAnimationFrame(frame);
+}, 30);
+})();
+</script>
+</body>
+</html>
