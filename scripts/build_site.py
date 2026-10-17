@@ -15,10 +15,16 @@ def build(destination):
         shutil.copy2(ROOT / name, destination / name)
     anonymous = destination / "anonymous"
     anonymous.mkdir(exist_ok=True)
+    identities = destination / "identities"
+    identities.mkdir(exist_ok=True)
     pages = []
     for source in sorted((ROOT / "models").rglob("*.html")):
         token = secrets.token_hex(16)
         shutil.copy2(source, anonymous / f"{token}.html")
+        (identities / f"{token}.json").write_text(
+            json.dumps({"model": source.stem.replace("_", " ")}) + "\n",
+            encoding="utf-8",
+        )
         content = source.read_bytes()
         pages.append({
             "id": token,

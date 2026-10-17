@@ -22,6 +22,9 @@ its model name. The viewer's **Random page** button selects another simulation
 (avoiding an immediate repeat when multiple pages are available).
 The viewer banner shows only the HTML file size (bytes and KiB) and line count,
 without displaying the original filename or model identity.
+When you have formed an opinion, click **Reveal model** in the viewer banner.
+The identity is loaded only on request and is hidden again on the next selection.
+Labels are derived from the HTML filename, with underscores replaced by spaces.
 
 Add self-contained HTML outputs under `models/`. During deployment,
 `scripts/build_site.py` copies every `models/**/*.html` file to an anonymous,
@@ -29,8 +32,8 @@ randomly named URL and generates the viewer's page list. The address bar shows
 `viewer.html#<opaque-id>`; refreshing keeps the same selection. IDs are regenerated
 on each deployment, so old blind links are not permanent.
 
-Only anonymous copies are deployed; the original model filenames are excluded
-from the generated site and page list.
+HTML outputs are deployed as anonymous copies; the page list contains no model
+names. Separate identity JSON files support the optional reveal button.
 This is presentation-level obfuscation: the repository remains public,
 and text inside a simulation could identify its author. Use
 outputs without model-identifying content for a blind comparison.

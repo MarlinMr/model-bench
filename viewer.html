@@ -44,6 +44,8 @@
   <header>
     <a href="./index.html">← Blind comparison</a>
     <button id="random" type="button" disabled>🎲 Random page</button>
+    <button id="reveal" type="button" disabled>Reveal model</button>
+    <p id="identity" role="status" hidden></p>
     <p id="status" role="status">Loading simulations…</p>
     <p id="metadata" aria-live="polite"></p>
   </header>
@@ -54,11 +56,19 @@
     const status = document.getElementById('status');
     const frame = document.getElementById('simulation');
     const metadata = document.getElementById('metadata');
+    const reveal = document.getElementById('reveal');
+    const identity = document.getElementById('identity');
     let pages = [];
     let current = null;
+    let selection = 0;
 
     function showPage(page) {
       current = page.id;
+      selection++;
+      identity.hidden = true;
+      identity.textContent = '';
+      reveal.disabled = false;
+      reveal.textContent = 'Reveal model';
       history.replaceState(null, '', `#${page.id}`);
       frame.hidden = false;
       frame.src = `./anonymous/${page.id}.html`;
@@ -85,6 +95,31 @@
     }
 
     button.addEventListener('click', randomPage);
+
+    reveal.addEventListener('click', async () => {
+      const requestedSelection = selection;
+      reveal.disabled = true;
+      reveal.textContent = 'Revealing…';
+      try {
+        const response = await fetch(`./identities/${current}.json`, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Could not load identity');
+        const result = await response.json();
+        if (!result || typeof result.model !== 'string' || !result.model.trim()) {
+          throw new Error('Invalid identity');
+        }
+        if (selection !== requestedSelection) return;
+        identity.textContent = `Created by: ${result.model}`;
+        identity.hidden = false;
+        reveal.textContent = 'Model revealed';
+        status.textContent = 'Choose another page to start a new blind comparison';
+      } catch (error) {
+        if (selection !== requestedSelection) return;
+        identity.textContent = 'Could not reveal the model. Please try again.';
+        identity.hidden = false;
+        reveal.disabled = false;
+        reveal.textContent = 'Reveal model';
+      }
+    });
 
     async function start() {
       try {
