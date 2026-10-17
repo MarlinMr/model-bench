@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bob Ross Living Painting Simulation</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Cinzel:wght@500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at center, #2a2018 0%, #110c08 100%);
+      color: #e5e0d8;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* Wood Frame Styling */
+    .picture-frame {
+      border: 24px solid #3d2314;
+      border-image: linear-gradient(135deg, #5c3a21 0%, #2b170a 50%, #4a2d18 100%) 30;
+      box-shadow: 
+        0 25px 50px -12px rgba(0, 0, 0, 0.8),
+        inset 0 0 15px rgba(0,0,0,0.8),
+        inset 0 0 30px rgba(0,0,0,0.5);
+      position: relative;
+    }
+
+    .picture-frame::before {
+      content: '';
+      position: absolute;
+      top: -28px; left: -28px; right: -28px; bottom: -28px;
+      border: 4px solid #1a0f07;
+      pointer-events: none;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+    }
+
+    .picture-frame::after {
+      content: '';
+      position: absolute;
+      top: -12px; left: -12px; right: -12px; bottom: -12px;
+      border: 2px solid #8c5d35;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    /* Canvas Texture Overlay */
+    .canvas-container {
+      position: relative;
+      background-color: #1a1612;
+      overflow: hidden;
+    }
+
+    .canvas-texture {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 0);
+      background-size: 4px 4px;
+      pointer-events: none;
+      mix-blend-mode: overlay;
+      z-index: 10;
+    }
+
+    .signature-font {
+      font-family: 'Caveat', cursive;
+    }
+
+    .title-font {
+      font-family: 'Cinzel', serif;
+    }
+
+    /* Custom Scrollbar for Controls */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.2);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(180, 140, 100, 0.3);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(180, 140, 100, 0.5);
+    }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-between p-4 md:p-8 min-h-screen">
+
+  <!-- Header -->
+  <header class="text-center mb-4 max-w-2xl">
+    <h1 class="title-font text-3xl md:text-4xl text-amber-100/90 tracking-wide font-bold drop-shadow-md">
+      The Joy of Living Art
+    </h1>
+    <p class="text-xs md:text-sm text-amber-200/60 mt-1 italic">
+      An interactive dynamic homage to Bob Ross • Brushstrokes by code
+    </p>
+  </header>
+
+  <!-- Main Content Container: Gallery Display -->
+  <main class="w-full max-w-5xl flex flex-col items-center my-auto">
+    <!-- Picture Frame Canvas Container -->
+    <div class="picture-frame rounded-sm bg-neutral-900 w-full max-w-4xl aspect-[16/10] shadow-2xl relative">
+      <div class="canvas-container w-full h-full">
+        <!-- Canvas Element -->
+        <canvas id="paintCanvas" class="w-full h-full block cursor-pointer" title="Click to trigger a subtle splash on the water!"></canvas>
+        <div class="canvas-texture"></div>
+        
+        <!-- Live Painting Progress Overlay -->
+        <div id="paintingStatus" class="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-amber-900/40 text-amber-100/80 px-3 py-1.5 rounded-md text-xs flex items-center gap-2 transition-opacity duration-500 opacity-0 pointer-events-none z-20">
+          <i class="fa-solid fa-paint-brush animate-pulse text-amber-400"></i>
+          <span id="statusText">Painting canvas background...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quote Banner -->
+    <div class="mt-6 w-full max-w-3xl text-center px-4 min-h-[4rem] flex flex-col justify-center items-center">
+      <blockquote id="quoteText" class="signature-font text-2xl md:text-3xl text-amber-200/90 transition-opacity duration-700 opacity-100 drop-shadow">
+        "We don't make mistakes, just happy little accidents."
+      </blockquote>
+      <p id="quoteAuthor" class="text-xs tracking-widest text-amber-400/60 uppercase mt-1 font-semibold">- Bob Ross</p>
+    </div>
+  </main>
+
+  <!-- Control Panel & Toolbar -->
+  <footer class="w-full max-w-4xl bg-stone-900/80 backdrop-blur-md border border-amber-900/30 rounded-2xl p-4 md:p-5 mt-6 shadow-2xl">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+      
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-center md:justify-start gap-2 col-span-1">
+        <button id="repaintBtn" class="flex items-center gap-2 bg-gradient-to-r from-amber-700 to-amber-900 hover:from-amber-600 hover:to-amber-800 text-amber-100 font-medium px-4 py-2 rounded-xl text-sm transition-all shadow-md active:scale-95 border border-amber-500/30">
+          <i class="fa-solid fa-rotate-right"></i>
+          <span>Repaint Scene</span>
+        </button>
+        
+        <button id="quoteBtn" class="p-2 bg-stone-800 hover:bg-stone-700 text-amber-200 rounded-xl transition-all border border-amber-900/30" title="New Quote">
+          <i class="fa-solid fa-quote-right"></i>
+        </button>
+      </div>
+
+      <!-- Time of Day Lighting Selector -->
+      <div class="flex items-center justify-center gap-1 bg-stone-950/60 p-1.5 rounded-xl border border-amber-900/20 col-span-1">
+        <button data-time="day" class="time-btn flex-1 py-1 px-2 rounded-lg text-xs font-medium transition-all bg-amber-600/30 text-amber-200 border border-amber-500/40">
+          <i class="fa-solid fa-sun mr-1"></i> Day
+        </button>
+        <button data-time="sunset" class="time-btn flex-1 py-1 px-2 rounded-lg text-xs font-medium transition-all text-stone-400 hover:text-amber-200">
+          <i class="fa-solid fa-cloud-sun mr-1"></i> Sunset
+        </button>
+        <button data-time="twilight" class="time-btn flex-1 py-1 px-2 rounded-lg text-xs font-medium transition-all text-stone-400 hover:text-amber-200">
+          <i class="fa-solid fa-moon mr-1"></i> Twilight
+        </button>
+      </div>
+
+      <!-- Wind Speed Control Slider -->
+      <div class="flex items-center gap-3 bg-stone-950/60 px-3 py-2 rounded-xl border border-amber-900/20 col-span-1">
+        <i class="fa-solid fa-wind text-amber-400/80 text-xs"></i>
+        <div class="flex-1 flex flex-col">
+          <div class="flex justify-between text-[10px] text-amber-200/60 mb-0.5">
+            <span>Breeze</span>
+            <span id="windValText">Gentle</span>
+          </div>
+          <input type="range" id="windSlider" min="0.2" max="2.5" step="0.1" value="1" class="w-full accent-amber-500 h-1 bg-stone-800 rounded-lg appearance-none cursor-pointer">
+        </div>
+      </div>
+
+      <!-- Audio Ambience Toggle -->
+      <div class="flex items-center justify-center md:justify-end gap-2 col-span-1">
+        <button id="audioBtn" class="flex items-center gap-2 bg-stone-800 hover:bg-stone-700 text-stone-300 px-4 py-2 rounded-xl text-sm transition-all border border-amber-900/30 w-full md:w-auto justify-center">
+          <i id="audioIcon" class="fa-solid fa-volume-xmark text-red-400"></i>
+          <span id="audioText">Sound Off</span>
+        </button>
+      </div>
+
+    </div>
+  </footer>
+
+  <!-- Main Engine Logic -->
+  <script>
+    /**
+     * Bob Ross Living Painting Simulation Engine
+     * Generates a dynamic painterly scene with continuous lifecycle and real-time audio.
+     */
+
+    // --- Bob Ross Quotes Collection ---
+    const bobQuotes = [
+      "We don't make mistakes, just happy little accidents.",
+      "Let's put a happy little tree right over here.",
+      "Gotta have a little sadness once in a while so you know when the good times come.",
+      "There's nothing wrong with having a tree as a friend.",
+      "Trees cover up a multitude of sins.",
+      "Beat the devil out of it!",
+      "Just pretend you are a whisper floating across a cloud.",
+      "Water's like me. It's lazy... Boy, it always looks for the easiest way to do things.",
+      "You can do anything here. So long as it makes you happy.",
+      "Shadows are just as important as light.",
+      "In painting, you have unlimited power. You have the ability to move mountains."
+    ];
+
+    // --- Time Configurations ---
+    const LIGHTING_MODES = {
+      day: {
+        skyTop: '#4a80b4', skyMid: '#82b1d0', skyLow: '#dbe8f0',
+        mountainBase: '#3c4a5c', mountainHighlight: '#e8f0f8', mountainShadow: '#222d3b',
+        distantFoliage: '#324a3e', treeBase: '#1a3322', treeHighlight: '#4d8054',
+        waterTop: '#3b6a88', waterBottom: '#24455a', sunColor: 'rgba(255, 250, 220, 0.6)',
+        fogColor: 'rgba(219, 232, 240, 0.3)', lightIntensity: 1.0
+      },
+      sunset: {
+        skyTop: '#2c335e', skyMid: '#b85450', skyLow: '#f2a057',
+        mountainBase: '#4a3041', mountainHighlight: '#f7c08a', mountainShadow: '#261724',
+        distantFoliage: '#3b2832', treeBase: '#1a211a', treeHighlight: '#a36d3b',
+        waterTop: '#8a484f', waterBottom: '#3a2032', sunColor: 'rgba(255, 180, 100, 0.8)',
+        fogColor: 'rgba(242, 160, 87, 0.25)', lightIntensity: 0.85
+      },
+      twilight: {
+        skyTop: '#0d1326', skyMid: '#1a2647', skyLow: '#38486b',
+        mountainBase: '#172033', mountainHighlight: '#7e92b3', mountainShadow: '#090d17',
+        distantFoliage: '#121e1e', treeBase: '#0b1410', treeHighlight: '#284738',
+        waterTop: '#172740', waterBottom: '#0a1221', sunColor: 'rgba(180, 210, 255, 0.3)',
+        fogColor: 'rgba(56, 72, 107, 0.2)', lightIntensity: 0.6
+      }
+    };
+
+    // Global App State
+    const state = {
+      canvas: null,
+      ctx: null,
+      width: 0,
+      height: 0,
+      timeMode: 'day',
+      windSpeed: 1.0,
+      audioActive: false,
+      paintingProgress: 1.0, // 0 to 1 during sequential render
+      isPainting: false,
+      currentStep: 6,
+      time: 0,
+      birds: [],
+      particles: [],
+      waterRipples: [],
+      clouds: []
+    };
+
+    // --- Web Audio Synthesizer ---
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.windGain = null;
+        this.waterGain = null;
+        this.initialized = false;
+      }
+
+      init() {
+        if (this.initialized) return;
+        try {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioCtx();
+
+          // Ambient Wind (Filtered Pink/Brown Noise)
+          const bufferSize = this.ctx.sampleRate * 2;
+          const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+          const output = noiseBuffer.getChannelData(0);
+          let lastOut = 0.0;
+          for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            output[i] = (lastOut + (0.02 * white)) / 1.02;
+            lastOut = output[i];
+            output[i] *= 3.5; // boost
+          }
+
+          const whiteNoise = this.ctx.createBufferSource();
+          whiteNoise.buffer = noiseBuffer;
+          whiteNoise.loop = true;
+
+          const windFilter = this.ctx.createBiquadFilter();
+          windFilter.type = 'lowpass';
+          windFilter.frequency.value = 350;
+
+          this.windGain = this.ctx.createGain();
+          this.windGain.gain.value = 0.05;
+
+          whiteNoise.connect(windFilter);
+          windFilter.connect(this.windGain);
+          this.windGain.connect(this.ctx.destination);
+          whiteNoise.start();
+
+          // Ambient Water River Stream
+          const waterFilter = this.ctx.createBiquadFilter();
+          waterFilter.type = 'bandpass';
+          waterFilter.frequency.value = 600;
+          waterFilter.Q.value = 1.0;
+
+          this.waterGain = this.ctx.createGain();
+          this.waterGain.gain.value = 0.03;
+
+          const waterNoise = this.ctx.createBufferSource();
+          waterNoise.buffer = noiseBuffer;
+          waterNoise.loop = true;
+
+          waterNoise.connect(waterFilter);
+          waterFilter.connect(this.waterGain);
+          this.waterGain.connect(this.ctx.destination);
+          waterNoise.start();
+
+          // Periodic Bird Chirps
+          setInterval(() => {
+            if (state.audioActive && Math.random() < 0.4 && state.timeMode !== 'twilight') {
+              this.playBirdChirp();
+            }
+          }, 4000);
+
+          this.initialized = true;
+        } catch (e) {
+          console.error("Audio Context Init Error:", e);
+        }
+      }
+
+      playBirdChirp() {
+        if (!this.ctx || !state.audioActive) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        const startFreq = 2200 + Math.random() * 800;
+        osc.frequency.setValueAtTime(startFreq, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(startFreq + 600, this.ctx.currentTime + 0.08);
+        osc.frequency.exponentialRampToValueAtTime(startFreq - 200, this.ctx.currentTime + 0.15);
+
+        gain.gain.setValueAtTime(0, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.02, this.ctx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.18);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.2);
+      }
+
+      playBrushSound() {
+        if (!this.ctx || !state.audioActive) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(120 + Math.random() * 60, this.ctx.currentTime);
+
+        gain.gain.setValueAtTime(0.01, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.1);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+      }
+
+      updateParams(windVal) {
+        if (!this.initialized) return;
+        if (this.windGain) {
+          this.windGain.gain.setTargetAtTime(0.03 * windVal * (state.audioActive ? 1 : 0), this.ctx.currentTime, 0.1);
+        }
+        if (this.waterGain) {
+          this.waterGain.gain.setTargetAtTime(0.025 * (state.audioActive ? 1 : 0), this.ctx.currentTime, 0.1);
+        }
+      }
+
+      toggle(active) {
+        if (active) {
+          this.init();
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+        }
+        this.updateParams(state.windSpeed);
+      }
+    }
+
+    const audioEngine = new SoundEngine();
+
+    // --- Entity Setup ---
+    function initEntities() {
+      // Birds
+      state.birds = [];
+      for (let i = 0; i < 4; i++) {
+        state.birds.push({
+          x: Math.random() * state.width,
+          y: state.height * 0.15 + Math.random() * (state.height * 0.2),
+          speed: 0.6 + Math.random() * 0.8,
+          size: 10 + Math.random() * 8,
+          wingPhase: Math.random() * Math.PI * 2,
+          wingSpeed: 0.15 + Math.random() * 0.1
+        });
+      }
+
+      // Dynamic Clouds
+      state.clouds = [];
+      for (let i = 0; i < 5; i++) {
+        state.clouds.push({
+          x: Math.random() * state.width,
+          y: Math.random() * (state.height * 0.3),
+          width: 120 + Math.random() * 200,
+          height: 35 + Math.random() * 30,
+          speed: 0.15 + Math.random() * 0.25,
+          opacity: 0.3 + Math.random() * 0.4
+        });
+      }
+
+      // Pollen / Falling Leaves / Floating Dust Particles
+      state.particles = [];
+      for (let i = 0; i < 35; i++) {
+        state.particles.push({
+          x: Math.random() * state.width,
+          y: Math.random() * state.height,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: 0.2 + Math.random() * 0.5,
+          size: 1.5 + Math.random() * 2.5,
+          alpha: 0.2 + Math.random() * 0.6,
+          color: Math.random() > 0.5 ? '#fce2ae' : '#ffffff'
+        });
+      }
+    }
+
+    // --- Procedural Canvas Painter Engine ---
+    function drawSky(ctx, theme) {
+      const grad = ctx.createLinearGradient(0, 0, 0, state.height * 0.55);
+      grad.addColorStop(0, theme.skyTop);
+      grad.addColorStop(0.6, theme.skyMid);
+      grad.addColorStop(1, theme.skyLow);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, state.width, state.height * 0.55);
+
+      // Soft Sun Glow
+      const sunGrad = ctx.createRadialGradient(
+        state.width * 0.7, state.height * 0.2, 5,
+        state.width * 0.7, state.height * 0.2, 180
+      );
+      sunGrad.addColorStop(0, theme.sunColor);
+      sunGrad.addColorStop(1, 'transparent');
+      ctx.fillStyle = sunGrad;
+      ctx.fillRect(0, 0, state.width, state.height * 0.55);
+
+      // Clouds
+      state.clouds.forEach(c => {
+        ctx.fillStyle = `rgba(255, 255, 255, ${c.opacity * (theme.lightIntensity * 0.8)})`;
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, c.width * 0.5, c.height * 0.5, 0, 0, Math.PI * 2);
+        ctx.ellipse(c.x - c.width * 0.25, c.y + 5, c.width * 0.35, c.height * 0.4, 0, 0, Math.PI * 2);
+        ctx.ellipse(c.x + c.width * 0.25, c.y + 2, c.width * 0.35, c.height * 0.35, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    // Paint Mountain Peak with Palette Knife Texture Simulation
+    function drawMountainRange(ctx, theme) {
+      const bx = state.width * 0.5;
+      const by = state.height * 0.48;
+
+      // Mountain Contour Coordinates
+      const peaks = [
+        { x: state.width * 0.05, y: state.height * 0.48 },
+        { x: state.width * 0.25, y: state.height * 0.22 },
+        { x: state.width * 0.45, y: state.height * 0.38 },
+        { x: state.width * 0.65, y: state.height * 0.18 },
+        { x: state.width * 0.85, y: state.height * 0.35 },
+        { x: state.width * 0.98, y: state.height * 0.48 }
+      ];
+
+      // Mountain Base Silhouette
+      ctx.fillStyle = theme.mountainBase;
+      ctx.beginPath();
+      ctx.moveTo(0, state.height * 0.5);
+      peaks.forEach(p => ctx.lineTo(p.x, p.y));
+      ctx.lineTo(state.width, state.height * 0.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Palette Knife Snow & Highlights (Right side facing light)
+      ctx.fillStyle = theme.mountainHighlight;
+      ctx.beginPath();
+      peaks.forEach((p, idx) => {
+        if (idx === 0) return;
+        const prev = peaks[idx - 1];
+        // Lighted ridge
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x + (p.x - prev.x) * 0.2, p.y + 40);
+        ctx.lineTo(p.x - 15, p.y + 60);
+      });
+      ctx.fill();
+
+      // Mountain Shadows (Left side)
+      ctx.fillStyle = theme.mountainShadow;
+      ctx.beginPath();
+      peaks.forEach((p) => {
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - 25, p.y + 70);
+        ctx.lineTo(p.x + 5, p.y + 75);
+      });
+      ctx.fill();
+
+      // Distant Low Valley Mist Layer
+      const mistGrad = ctx.createLinearGradient(0, state.height * 0.38, 0, state.height * 0.5);
+      mistGrad.addColorStop(0, 'transparent');
+      mistGrad.addColorStop(1, theme.fogColor);
+      ctx.fillStyle = mistGrad;
+      ctx.fillRect(0, state.height * 0.38, state.width, state.height * 0.12);
+    }
+
+    // Midground Hills & Distant Pines
+    function drawDistantForest(ctx, theme) {
+      ctx.fillStyle = theme.distantFoliage;
+      
+      // Distant rolling ridge
+      ctx.beginPath();
+      ctx.moveTo(0, state.height * 0.52);
+      ctx.quadraticCurveTo(state.width * 0.25, state.height * 0.44, state.width * 0.5, state.height * 0.49);
+      ctx.quadraticCurveTo(state.width * 0.75, state.height * 0.54, state.width, state.height * 0.46);
+      ctx.lineTo(state.width, state.height * 0.6);
+      ctx.lineTo(0, state.height * 0.6);
+      ctx.fill();
+
+      // Small distant evergreen treeline
+      const treeCount = 45;
+      for (let i = 0; i < treeCount; i++) {
+        const tx = (i / treeCount) * state.width;
+        const ty = state.height * 0.47 + Math.sin(i * 0.8) * 15;
+        const th = 18 + Math.sin(i) * 10;
+
+        ctx.beginPath();
+        ctx.moveTo(tx, ty - th);
+        ctx.lineTo(tx - 5, ty);
+        ctx.lineTo(tx + 5, ty);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+
+    // Water River with Dynamic Shimmer Reflections
+    function drawWater(ctx, theme, time) {
+      const waterTop = state.height * 0.52;
+      const waterBottom = state.height;
+
+      // Base Water Gradient
+      const waterGrad = ctx.createLinearGradient(0, waterTop, 0, waterBottom);
+      waterGrad.addColorStop(0, theme.waterTop);
+      waterGrad.addColorStop(1, theme.waterBottom);
+      ctx.fillStyle = waterGrad;
+      ctx.fillRect(0, waterTop, state.width, waterBottom - waterTop);
+
+      // Painterly Wet-on-Wet Horizontal Water Ripples & Sky Reflections
+      ctx.lineWidth = 2;
+      const rippleCount = 20;
+      for (let i = 0; i < rippleCount; i++) {
+        const ry = waterTop + (i / rippleCount) * (waterBottom - waterTop);
+        const waveOffset = Math.sin(time * 2 + i) * (15 * state.windSpeed);
+        const rx = (Math.sin(i * 99) * 0.5 + 0.5) * state.width + waveOffset;
+        const rLen = 30 + Math.cos(i) * 50;
+
+        ctx.strokeStyle = (i % 2 === 0) ? theme.skyLow : theme.mountainHighlight;
+        ctx.globalAlpha = 0.25 + Math.sin(time * 3 + i) * 0.15;
+
+        ctx.beginPath();
+        ctx.moveTo(rx - rLen, ry);
+        ctx.lineTo(rx + rLen, ry);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1.0;
+
+      // User Water Click Ripples
+      state.waterRipples.forEach((rip, index) => {
+        ctx.strokeStyle = theme.skyLow;
+        ctx.globalAlpha = rip.alpha;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(rip.x, rip.y, rip.r, rip.r * 0.3, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        rip.r += 0.8;
+        rip.alpha -= 0.015;
+        if (rip.alpha <= 0) state.waterRipples.splice(index, 1);
+      });
+      ctx.globalAlpha = 1.0;
+    }
+
+    // Draw Happy Little Evergreen Tree with Swaying Leaves
+    function drawBobTree(ctx, x, y, width, height, theme, sway) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      // Trunk
+      ctx.fillStyle = '#21130d';
+      ctx.fillRect(-width * 0.08, 0, width * 0.16, height * 0.25);
+
+      // Evergreen Layers (Boughs)
+      const layers = 5;
+      for (let i = 0; i < layers; i++) {
+        const progress = i / layers;
+        const layerY = -height * 0.2 - (progress * height * 0.75);
+        const layerW = width * (1 - progress * 0.65);
+        const layerH = height * 0.28;
+
+        // Apply Gentle Wind Sway to upper branches
+        const layerSway = sway * (progress * 1.5);
+
+        // Dark Shadow Base
+        ctx.fillStyle = theme.treeBase;
+        ctx.beginPath();
+        ctx.moveTo(layerSway, layerY - layerH);
+        ctx.lineTo(-layerW * 0.5 + layerSway * 0.5, layerY);
+        ctx.lineTo(layerW * 0.5 + layerSway * 0.5, layerY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Highlighting Brush Stroke Details ("Fan Brush Technique")
+        ctx.fillStyle = theme.treeHighlight;
+        ctx.beginPath();
+        ctx.moveTo(layerSway, layerY - layerH);
+        ctx.lineTo(layerSway * 0.8, layerY - layerH * 0.2);
+        ctx.lineTo(layerW * 0.4 + layerSway, layerY);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    // Foreground Bushes & Details ("Happy Little Bushes")
+    function drawForeground(ctx, theme, time) {
+      const windSway = Math.sin(time * 2.5) * (4 * state.windSpeed);
+
+      // Left Riverbank Landmass
+      ctx.fillStyle = '#1c2618';
+      ctx.beginPath();
+      ctx.moveTo(0, state.height * 0.68);
+      ctx.quadraticCurveTo(state.width * 0.2, state.height * 0.7, state.width * 0.35, state.height);
+      ctx.lineTo(0, state.height);
+      ctx.fill();
+
+      // Right Riverbank Landmass
+      ctx.beginPath();
+      ctx.moveTo(state.width, state.height * 0.62);
+      ctx.quadraticCurveTo(state.width * 0.75, state.height * 0.75, state.width * 0.6, state.height);
+      ctx.lineTo(state.width, state.height);
+      ctx.fill();
+
+      // Trees on Left Shore
+      drawBobTree(ctx, state.width * 0.12, state.height * 0.82, 90, 220, theme, windSway);
+      drawBobTree(ctx, state.width * 0.05, state.height * 0.88, 110, 260, theme, windSway * 0.8);
+
+      // Trees on Right Shore
+      drawBobTree(ctx, state.width * 0.88, state.height * 0.78, 100, 240, theme, windSway * 1.1);
+
+      // Foreground Bushes (Fan Brush Clusters)
+      const bushes = [
+        { x: state.width * 0.22, y: state.height * 0.88, r: 35 },
+        { x: state.width * 0.28, y: state.height * 0.92, r: 28 },
+        { x: state.width * 0.72, y: state.height * 0.85, r: 40 },
+        { x: state.width * 0.80, y: state.height * 0.90, r: 30 }
+      ];
+
+      bushes.forEach(b => {
+        ctx.fillStyle = theme.treeBase;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Highlight stroke
+        ctx.fillStyle = theme.treeHighlight;
+        ctx.beginPath();
+        ctx.arc(b.x + windSway * 0.3 - 3, b.y - 4, b.r * 0.75, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Signature in Bottom Corner ("Bob Ross")
+      ctx.fillStyle = '#d94336'; // Signature Red
+      ctx.font = '26px "Caveat", cursive';
+      ctx.textAlign = 'right';
+      ctx.fillText('Bob Ross', state.width - 24, state.height - 20);
+    }
+
+    // Dynamic Flying Birds
+    function updateAndDrawBirds(ctx, theme, time) {
+      ctx.strokeStyle = theme.mountainShadow;
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+
+      state.birds.forEach(b => {
+        b.x += b.speed * state.windSpeed;
+        if (b.x > state.width + 40) b.x = -40;
+
+        b.wingPhase += b.wingSpeed;
+        const wingY = Math.sin(b.wingPhase) * (b.size * 0.4);
+
+        ctx.beginPath();
+        // Left Wing
+        ctx.moveTo(b.x - b.size, b.y + wingY);
+        ctx.quadraticCurveTo(b.x - b.size * 0.5, b.y - b.size * 0.3, b.x, b.y);
+        // Right Wing
+        ctx.quadraticCurveTo(b.x + b.size * 0.5, b.y - b.size * 0.3, b.x + b.size, b.y + wingY);
+        ctx.stroke();
+      });
+    }
+
+    // Atmospheric Floating Leaves / Pollen Particles
+    function updateAndDrawParticles(ctx) {
+      state.particles.forEach(p => {
+        p.x += p.vx + Math.sin(state.time + p.y * 0.01) * state.windSpeed;
+        p.y += p.vy;
+
+        if (p.y > state.height) { p.y = -10; p.x = Math.random() * state.width; }
+        if (p.x > state.width) p.x = 0;
+        if (p.x < 0) p.x = state.width;
+
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1.0;
+    }
+
+    // --- Sequential Painting Sequence ---
+    const PAINTING_STEPS = [
+      { step: 1, title: "Step 1: Canvas Prep & Soft Sky Gradient", duration: 1200 },
+      { step: 2, title: "Step 2: Palette Knife Mountain Peaks & Snow Highlights", duration: 1600 },
+      { step: 3, title: "Step 3: Background Hills & Distant Mist Line", duration: 1400 },
+      { step: 4, title: "Step 4: Serene River Stream & Wet-on-Wet Water", duration: 1600 },
+      { step: 5, title: "Step 5: Happy Little Trees & Foreground Bushes", duration: 1800 },
+      { step: 6, title: "Step 6: Adding Final Details & Artist Signature", duration: 1000 }
+    ];
+
+    function startSequentialPainting() {
+      state.isPainting = true;
+      state.currentStep = 1;
+      
+      const statusEl = document.getElementById('paintingStatus');
+      const statusText = document.getElementById('statusText');
+      statusEl.style.opacity = '1';
+
+      function executeStep(stepIdx) {
+        if (stepIdx >= PAINTING_STEPS.length) {
+          state.isPainting = false;
+          state.currentStep = 6;
+          statusEl.style.opacity = '0';
+          return;
+        }
+
+        const current = PAINTING_STEPS[stepIdx];
+        state.currentStep = current.step;
+        statusText.innerText = current.title;
+
+        if (state.audioActive) {
+          audioEngine.playBrushSound();
+        }
+
+        setTimeout(() => {
+          executeStep(stepIdx + 1);
+        }, current.duration);
+      }
+
+      executeStep(0);
+    }
+
+    // --- Main Rendering Loop ---
+    function render() {
+      state.time += 0.02;
+      const theme = LIGHTING_MODES[state.timeMode];
+      const ctx = state.ctx;
+
+      // Update clouds drift
+      state.clouds.forEach(c => {
+        c.x += c.speed * state.windSpeed;
+        if (c.x - c.width > state.width) c.x = -c.width;
+      });
+
+      // Clear Canvas
+      ctx.clearRect(0, 0, state.width, state.height);
+
+      // Render based on sequential painting progress or full scene
+      if (state.currentStep >= 1) drawSky(ctx, theme);
+      if (state.currentStep >= 2) drawMountainRange(ctx, theme);
+      if (state.currentStep >= 3) drawDistantForest(ctx, theme);
+      if (state.currentStep >= 4) drawWater(ctx, theme, state.time);
+      if (state.currentStep >= 5) drawForeground(ctx, theme, state.time);
+      
+      // Continuous Animated Elements
+      if (!state.isPainting) {
+        updateAndDrawBirds(ctx, theme, state.time);
+        updateAndDrawParticles(ctx);
+      }
+
+      requestAnimationFrame(render);
+    }
+
+    // --- Event Listeners & UI Controls ---
+    function setupEventListeners() {
+      const canvas = state.canvas;
+
+      // Canvas Interactive Ripple Trigger
+      canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = (e.clientX - rect.left) * (state.width / rect.width);
+        const clickY = (e.clientY - rect.top) * (state.height / rect.height);
+
+        // Only create water ripple if clicked on the lower river section
+        if (clickY > state.height * 0.52) {
+          state.waterRipples.push({ x: clickX, y: clickY, r: 5, alpha: 0.8 });
+          if (state.audioActive) audioEngine.playBrushSound();
+        }
+      });
+
+      // Repaint Button
+      document.getElementById('repaintBtn').addEventListener('click', () => {
+        if (!state.isPainting) {
+          startSequentialPainting();
+        }
+      });
+
+      // Quote Generator Button
+      document.getElementById('quoteBtn').addEventListener('click', () => {
+        const quoteEl = document.getElementById('quoteText');
+        quoteEl.style.opacity = '0';
+        setTimeout(() => {
+          const randomQuote = bobQuotes[Math.floor(Math.random() * bobQuotes.length)];
+          quoteEl.innerText = `"${randomQuote}"`;
+          quoteEl.style.opacity = '1';
+        }, 400);
+      });
+
+      // Lighting Modes Buttons
+      document.querySelectorAll('.time-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('.time-btn').forEach(b => {
+            b.classList.remove('bg-amber-600/30', 'text-amber-200', 'border', 'border-amber-500/40');
+            b.classList.add('text-stone-400');
+          });
+
+          const targetBtn = e.currentTarget;
+          targetBtn.classList.add('bg-amber-600/30', 'text-amber-200', 'border', 'border-amber-500/40');
+          targetBtn.classList.remove('text-stone-400');
+
+          state.timeMode = targetBtn.getAttribute('data-time');
+        });
+      });
+
+      // Wind Speed Slider
+      const windSlider = document.getElementById('windSlider');
+      const windValText = document.getElementById('windValText');
+      windSlider.addEventListener('input', (e) => {
+        state.windSpeed = parseFloat(e.target.value);
+        if (state.windSpeed < 0.6) windValText.innerText = 'Gentle';
+        else if (state.windSpeed < 1.6) windValText.innerText = 'Breezy';
+        else windValText.innerText = 'Gusty';
+
+        audioEngine.updateParams(state.windSpeed);
+      });
+
+      // Sound Toggle
+      const audioBtn = document.getElementById('audioBtn');
+      const audioIcon = document.getElementById('audioIcon');
+      const audioText = document.getElementById('audioText');
+
+      audioBtn.addEventListener('click', () => {
+        state.audioActive = !state.audioActive;
+        audioEngine.toggle(state.audioActive);
+
+        if (state.audioActive) {
+          audioIcon.className = 'fa-solid fa-volume-high text-emerald-400';
+          audioText.innerText = 'Sound On';
+          audioBtn.classList.add('border-emerald-500/40');
+        } else {
+          audioIcon.className = 'fa-solid fa-volume-xmark text-red-400';
+          audioText.innerText = 'Sound Off';
+          audioBtn.classList.remove('border-emerald-500/40');
+        }
+      });
+
+      // Handle Window Resize
+      window.addEventListener('resize', resizeCanvas);
+    }
+
+    function resizeCanvas() {
+      const container = state.canvas.parentElement;
+      state.width = container.clientWidth;
+      state.height = container.clientHeight;
+
+      state.canvas.width = state.width;
+      state.canvas.height = state.height;
+
+      initEntities();
+    }
+
+    // --- Initialize Application ---
+    window.onload = function() {
+      state.canvas = document.getElementById('paintCanvas');
+      state.ctx = state.canvas.getContext('2d');
+
+      resizeCanvas();
+      setupEventListeners();
+
+      // Trigger sequential paint animation upon first load
+      startSequentialPainting();
+
+      // Start continuous animation loop
+      render();
+    };
+  </script>
+</body>
+</html>
