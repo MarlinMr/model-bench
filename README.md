@@ -24,6 +24,10 @@ The viewer banner shows only the HTML file size (bytes and KiB) and line count,
 without displaying the original filename or model identity.
 When you have formed an opinion, click **Reveal model** in the viewer banner.
 The identity is loaded only on request and is hidden again on the next selection.
+
+**Compare all** opens the gallery, which shows every simulation side by side
+with letters (A, B, C, …) instead of names. **Replay all** restarts every
+scene's paint-in animation, and **Reveal models** shows each creator at once.
 Labels are derived from the HTML filename, with underscores replaced by spaces.
 
 Add self-contained HTML outputs under `models/`. During deployment,
