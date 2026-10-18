@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def build(destination):
     destination.mkdir(parents=True, exist_ok=True)
-    for name in ("index.html", "viewer.html"):
+    for name in ("index.html", "viewer.html", "gallery.html"):
         shutil.copy2(ROOT / name, destination / name)
     anonymous = destination / "anonymous"
     anonymous.mkdir(exist_ok=True)
