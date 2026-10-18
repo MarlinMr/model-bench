@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Happily Ever After — A Bob Ross Scene</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="frame">
+    <div class="mat">
+      <canvas id="scene" width="960" height="640"></canvas>
+    </div>
+  </div>
+
+  <script src="js/palette.js"></script>
+  <script src="js/painter.js"></script>
+  <script src="js/core.js"></script>
+  <!-- Layers are painted in document order. Add NEW LAYER FILES HERE, in the order they should be painted (background -> foreground). Do NOT edit this list in any other way. Current order: -->
+  <script src="js/layers/sky.js"></script>
+  <script src="js/layers/birds.js"></script>
+  <script src="js/layers/mountains.js"></script>
+  <script src="js/layers/meadow.js"></script>
+  <script src="js/layers/trees.js"></script>
+  <script src="js/layers/stream.js"></script>
+  <script src="js/layers/foreground.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
