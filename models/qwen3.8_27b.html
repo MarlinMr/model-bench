@@ -4,7 +4,47 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Happily Ever After — A Bob Ross Scene</title>
-<link rel="stylesheet" href="css/style.css">
+  <style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 28%, #2c2c36, #101015 72%);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  overflow: hidden;
+}
+
+.frame {
+  padding: 24px;
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, #5c3c22 0%, #7c5432 38%, #452b16 72%, #2f1d0e 100%);
+  box-shadow:
+    0 32px 90px rgba(0, 0, 0, 0.62),
+    inset 0 2px 3px rgba(255, 236, 196, 0.22),
+    inset 0 -6px 12px rgba(0, 0, 0, 0.5);
+  transform: rotate(-0.4deg);
+}
+
+.mat {
+  padding: 16px;
+  background: linear-gradient(#fffdf5, #efe6d0);
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, 0.28);
+  border-radius: 3px;
+}
+
+canvas {
+  display: block;
+  width: min(86vw, 900px);
+  height: auto;
+  aspect-ratio: 960 / 640;
+  border-radius: 2px;
+  background: #b6dcef;
+}
+  </style>
 </head>
 <body>
   <div class="frame">
@@ -13,17 +53,1034 @@
     </div>
   </div>
 
-  <script src="js/palette.js"></script>
-  <script src="js/painter.js"></script>
-  <script src="js/core.js"></script>
+<script>
+/* Bob Ross color palette — shared constants. */
+window.PALETTE = {
+  sky: {
+    top: "#7fb8e6",
+    mid: "#a9d4ef",
+    horizon: "#e8f4fb"
+  },
+  sun: {
+    core: "#fff2b0",
+    bloom: "#ffe27a",
+    halo: "rgba(255, 230, 120, 0.35)"
+  },
+  mountain: {
+    far: "#5f7f9c",
+    farLit: "#8aa9c2",
+    near: "#48607a",
+    snow: "#f4fbff"
+  },
+  tree: {
+    trunk: "#3a2a1c",
+    dark: "#123524",
+    mid: "#1f5c3a",
+    light: "#3f8b5c"
+  },
+  meadow: {
+    far: "#4f8a4a",
+    mid: "#3f7a3d",
+    near: "#2f5f2e",
+    highlight: "#6aa65f"
+  },
+  water: {
+    base: "#6fa8c9",
+    bright: "#cfe6f2",
+    sparkle: "rgba(255, 255, 255, 0.85)"
+  },
+  cloud: "rgba(255, 255, 255, 0.92)",
+  shadow: "rgba(10, 30, 25, 0.4)"
+};
+</script>
+<script>
+/* Painter engine: sequential reveal + infinite animation loop.
+ *
+ * Convention (all layers MUST follow this):
+ *  - Painter.registerLayer({ id, name, draw }) registers a layer.
+ *    Layers are drawn in registration order (= script order in index.html),
+ *    which is the paint order: background first, foreground last.
+ *  - draw(ctx, t, reveal, W, H):
+ *      ctx    : 2d context
+ *      t      : seconds since scene start (use t, NOT accumulated state)
+ *      reveal : 0..1 while this layer is being painted in, then stays 1
+ *      W, H   : canvas CSS pixel size (960 x 640)
+ *  - Animation MUST be a pure function of t (deterministic, no drift).
+ *  - A layer must NOT clear the canvas. The engine clears once per frame.
+ */
+(function () {
+  "use strict";
+
+  var layers = [];
+  var revealEntries = [];
+  var running = false;
+  var rafId = 0;
+  var startTime = 0;
+  var ctx = null;
+  var W = 0;
+  var H = 0;
+
+  function registerLayer(def) {
+    if (!def || typeof def.draw !== "function") {
+      throw new Error("Painter: layer needs a draw() function (" + (def && def.id) + ")");
+    }
+    layers.push(def);
+    if (ctx) def.ctx = ctx;
+  }
+
+  function start(canvas, opts) {
+    opts = opts || {};
+    var totalDelay = opts.totalDelay == null ? 0.8 : opts.totalDelay;
+    var perLayer = opts.perLayer == null ? 0.7 : opts.perLayer;
+    var revealDur = opts.revealDur == null ? 1.2 : opts.revealDur;
+
+    W = canvas.width;
+    H = canvas.height;
+    ctx = canvas.getContext("2d");
+
+    // De-duplicate ids
+    var seen = {};
+    for (var i = 0; i < layers.length; i++) {
+      var id = layers[i].id || ("layer" + i);
+      if (seen[id]) layers[i].id = id + "_" + i;
+      else seen[layers[i].id] = true;
+      layers[i].ctx = ctx;
+    }
+
+    revealEntries = layers.map(function (layer, i) {
+      return {
+        layer: layer,
+        startAt: totalDelay + i * perLayer,
+        dur: revealDur,
+        revealed: false
+      };
+    });
+
+    startTime = performance.now();
+    running = true;
+    rafId = requestAnimationFrame(frame);
+    return window.Painter;
+  }
+
+  function easeInOut(x) {
+    return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+  }
+
+  function frame(now) {
+    if (!running) return;
+    var t = (now - startTime) / 1000;
+
+    ctx.clearRect(0, 0, W, H);
+
+    for (var i = 0; i < revealEntries.length; i++) {
+      var e = revealEntries[i];
+      if (t < e.startAt) continue;
+      if (!e.revealed) e.revealed = true;
+      var raw = Math.min(1, (t - e.startAt) / e.dur);
+      e.layer.draw(ctx, t, easeInOut(raw), W, H);
+    }
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function stop() {
+    running = false;
+    cancelAnimationFrame(rafId);
+  }
+
+  /* ---------- shared painterly brush helpers ---------- */
+
+  var Brush = {
+    // Fluffy "bob ross" blob built from overlapping circles. Deterministic per (x, y).
+    puff: function (c, x, y, r, color, alpha) {
+      if (alpha == null) alpha = 1;
+      c.save();
+      c.globalAlpha = alpha;
+      c.fillStyle = color;
+      c.beginPath();
+      var n = Math.max(4, Math.round(r / 5));
+      for (var i = 0; i < n; i++) {
+        var a = (i / n) * Math.PI * 2;
+        var rr = r * (0.65 + 0.35 * Math.abs(Math.sin(a * 3 + x * 0.13 + y * 0.07)));
+        var px = x + Math.cos(a) * r * 0.5;
+        var py = y + Math.sin(a) * r * 0.36;
+        c.moveTo(px + rr, py);
+        c.arc(px, py, rr, 0, Math.PI * 2);
+      }
+      c.fill();
+      c.restore();
+    },
+    // Row of puffs, left to right (grass line, cloud bank, tree foliage).
+    band: function (c, x0, x1, y, r, color, alpha) {
+      var step = r * 1.15;
+      for (var x = x0; x <= x1 + step; x += step) {
+        this.puff(c, x, y, r, color, alpha);
+      }
+    },
+    // Soft shadow patch.
+    shadow: function (c, x, y, rx, ry, color) {
+      c.save();
+      c.globalAlpha = 0.35;
+      c.fillStyle = color || "rgba(10,30,25,0.5)";
+      c.translate(x, y);
+      c.scale(rx, ry);
+      c.beginPath();
+      c.arc(0, 0, 1, 0, Math.PI * 2);
+      c.fill();
+      c.restore();
+    }
+  };
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6d2b79f5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  window.Painter = {
+    registerLayer: registerLayer,
+    start: start,
+    stop: stop,
+    layers: layers,
+    get ctx() { return ctx; },
+    get W() { return W; },
+    get H() { return H; }
+  };
+  window.Brush = Brush;
+  window.makeRand = mulberry32;
+})();
+</script>
+<script>
+/* Scene layout: shared geometry constants + small helpers.
+ * Every layer files MUST import from LAYOUT for positions so future
+ * layers (mountains, trees, water, foreground) line up consistently.
+ *
+ * Design space is 960 x 640 absolute pixels (canvas is set to that size
+ * in index.html; CSS scales it down).
+ */
+(function () {
+  "use strict";
+  var W = 960, H = 640;
+  var horizonY = Math.round(H * 0.62);       // line where sky meets land
+
+  var LAYOUT = {
+    W: W,
+    H: H,
+    horizonY: horizonY,
+    sun: { x: W * 0.78, y: H * 0.22, core: 34, halo: 150 },
+    // Stream: a meandering vertical-ish band flowing from the horizon
+    // (behind the mountains) down to the bottom edge. Center x as fn of y.
+    stream: {
+      widthAt: function (y) { return 26 + (y - LAYOUT.horizonY) * 0.42; },
+      centerAt: function (y) {
+        return W * 0.38
+          + Math.sin(((y - LAYOUT.horizonY) / H) * 5.2) * 60
+          + Math.sin(((y - LAYOUT.horizonY) / H) * 2.1 + 1.7) * 30;
+      }
+    },
+    // Tree belt band: y range where the pine forest sits
+    treeBelt: { top: horizonY - 26, bottom: H - 70 },
+    // Meadow band: between tree belt bottom and stream edge (rough)
+    meadowTop: horizonY,
+    meadowBottom: H
+  };
+
+  window.LAYOUT = LAYOUT;
+})();
+</script>
   <!-- Layers are painted in document order. Add NEW LAYER FILES HERE, in the order they should be painted (background -> foreground). Do NOT edit this list in any other way. Current order: -->
-  <script src="js/layers/sky.js"></script>
-  <script src="js/layers/birds.js"></script>
-  <script src="js/layers/mountains.js"></script>
-  <script src="js/layers/meadow.js"></script>
-  <script src="js/layers/trees.js"></script>
-  <script src="js/layers/stream.js"></script>
-  <script src="js/layers/foreground.js"></script>
-  <script src="js/main.js"></script>
+<script>
+/* Layer 1: SKY (background).
+ * Painted first. Reveal = left-to-right "painting the canvas in" (Bob Ross style).
+ * Animations: drifting clouds + slowly pulsing sun halo. All pure functions of t.
+ */
+(function () {
+  "use strict";
+
+  var P = window.PALETTE;
+  var L = window.LAYOUT;
+
+  // Deterministic cloud data
+  var rand = window.makeRand(1337);
+  var CLOUDS = [];
+  for (var i = 0; i < 7; i++) {
+    CLOUDS.push({
+      y: L.H * (0.10 + rand() * 0.34),
+      r: 20 + rand() * 26,
+      speed: 5 + rand() * 9,          // px / s
+      x0: rand() * (L.W + 300) - 150, // start offset
+      puffs: 4 + Math.floor(rand() * 4)
+    });
+  }
+
+  window.Painter.registerLayer({
+    id: "sky",
+    name: "Sky, Sun, Clouds",
+    revealPct: function () { return 1; },
+    draw: function (c, t, reveal, W, H) {
+      // Clip to the revealed band (reveal 0..1)
+      c.save();
+      c.beginPath();
+      c.rect(0, 0, W * reveal, H);
+      c.clip();
+
+      // Sky gradient
+      var g = c.createLinearGradient(0, 0, 0, L.horizonY);
+      g.addColorStop(0, P.sky.top);
+      g.addColorStop(0.65, P.sky.mid);
+      g.addColorStop(1, P.sky.horizon);
+      c.fillStyle = g;
+      c.fillRect(0, 0, W, L.horizonY + 2);
+
+      // Sun with glowing bloom
+      var pulse = 1 + 0.03 * Math.sin(t * 0.8);
+      var sg = c.createRadialGradient(L.sun.x, L.sun.y, 0, L.sun.x, L.sun.y, L.sun.halo * pulse);
+      sg.addColorStop(0, P.sun.core);
+      sg.addColorStop(0.35, P.sun.bloom);
+      sg.addColorStop(1, "rgba(255,230,120,0)");
+      c.fillStyle = sg;
+      c.beginPath();
+      c.arc(L.sun.x, L.sun.y, L.sun.halo * pulse, 0, Math.PI * 2);
+      c.fill();
+
+      // Clouds drifting left->right
+      for (var i = 0; i < CLOUDS.length; i++) {
+        var cl = CLOUDS[i];
+        var span = W + 320;
+        var x = ((cl.x0 + t * cl.speed) % span + span) % span - 160;
+        for (var p = 0; p < cl.puffs; p++) {
+          var ox = (p - cl.puffs / 2) * cl.r * 0.9;
+          var oy = Math.sin(p * 1.3 + i) * cl.r * 0.3;
+          window.Brush.puff(c, x + ox, cl.y + oy, cl.r * (0.7 + 0.3 * Math.abs(Math.sin(p * 2 + i * 0.7))), P.cloud, 0.92);
+        }
+      }
+
+      c.restore();
+    }
+  });
+})();
+</script>
+<script>
+/* Layer 2: BIRDS.
+ * Small flocks of birds crossing the sky. Pure function of t (no state).
+ * Painted after sky, before land layers (so land covers overlaps if any).
+ */
+(function () {
+  "use strict";
+
+  var L = window.LAYOUT;
+  var rand = window.makeRand(4242);
+  var FLOCK = [];
+  for (var i = 0; i < 4; i++) {
+    FLOCK.push({
+      y: L.H * (0.12 + rand() * 0.24),
+      speed: 45 + rand() * 30,
+      x0: rand() * (L.W + 400),
+      size: 9 + rand() * 7,
+      phase: rand() * Math.PI * 2,
+      flapHz: 5 + rand() * 3,
+      dir: rand() > 0.5 ? 1 : -1
+    });
+  }
+
+  function bird(c, x, y, s, flap) {
+    var w = s * (0.55 + 0.45 * flap); // wing sweep
+    c.strokeStyle = "rgba(35,38,45,0.78)";
+    c.lineWidth = Math.max(1.2, s * 0.16);
+    c.lineCap = "round";
+    c.beginPath();
+    c.moveTo(x - s, y + w * 0.5);
+    c.quadraticCurveTo(x - s * 0.4, y - w, x, y);
+    c.quadraticCurveTo(x + s * 0.4, y - w, x + s, y + w * 0.5);
+    c.stroke();
+  }
+
+  window.Painter.registerLayer({
+    id: "birds",
+    name: "Birds in flight",
+    draw: function (c, t, reveal, W, H) {
+      var span = W + 400;
+      for (var i = 0; i < FLOCK.length; i++) {
+        var b = FLOCK[i];
+        var raw = ((b.x0 + t * b.speed * b.dir) % span + span) % span - 200;
+        var x = b.dir > 0 ? raw : W - raw;
+        var flap = Math.sin(t * b.flapHz * Math.PI + b.phase);
+        bird(c, x, b.y + Math.sin(t * 0.9 + b.phase) * 6, b.size, flap);
+        bird(c, x + 40, b.y + 12, b.size * 0.8, flap * 0.9);
+      }
+    }
+  });
+})();
+</script>
+<script>
+/* Layer 4: MOUNTAINS (Bob Ross "happy little mountains").
+ * Far ridge + near ridge with snow caps, baselines sitting on the horizon.
+ * Reveal = left-to-right wipe. Only animation: breathing snow highlights.
+ * All positions deterministic (seeded rand at module top-level).
+ */
+(function () {
+  "use strict";
+
+  var P = window.PALETTE;
+  var L = window.LAYOUT;
+  var rand = window.makeRand(2718);
+
+  function makePeaks(count, hMin, hMax, wMin, wMax) {
+    var peaks = [];
+    for (var i = 0; i < count; i++) {
+      peaks.push({
+        cx: ((i + 0.5) / count) * L.W + (rand() - 0.5) * (L.W / count) * 0.7,
+        halfW: wMin + rand() * (wMax - wMin),
+        h: hMin + rand() * (hMax - hMin),
+        jag: 0.8 + rand() * 0.6 // snow lip irregularity
+      });
+    }
+    return peaks;
+  }
+
+  var FAR_PEAKS = makePeaks(7, 70, 140, 80, 130);
+  var NEAR_PEAKS = makePeaks(5, 45, 105, 100, 170);
+
+  function heightAt(peaks, x) {
+    var h = 0;
+    for (var i = 0; i < peaks.length; i++) {
+      var p = peaks[i];
+      var d = Math.abs(x - p.cx);
+      if (d < p.halfW) {
+        var v = p.h * (1 - d / p.halfW);
+        if (v > h) h = v;
+      }
+    }
+    return h;
+  }
+
+  function ridgePath(c, peaks, W, base) {
+    c.beginPath();
+    c.moveTo(-2, base + 2);
+    for (var x = -2; x <= W + 2; x += 6) c.lineTo(x, base - heightAt(peaks, x));
+    c.lineTo(W + 2, base + 2);
+    c.closePath();
+  }
+
+  function paintRidge(c, peaks, W, base, body, rim) {
+    ridgePath(c, peaks, W, base);
+    c.fillStyle = body;
+    c.fill();
+
+    // Soft rim along the crest
+    c.save();
+    c.beginPath();
+    for (var x = 0; x <= W; x += 8) {
+      var y = base - heightAt(peaks, x);
+      if (x === 0) c.moveTo(x, y); else c.lineTo(x, y);
+    }
+    c.lineCap = "round";
+    c.lineWidth = 9;
+    c.strokeStyle = rim;
+    c.globalAlpha = rim === P.mountain.farLit ? 0.5 : 0.3;
+    c.stroke();
+    c.restore();
+
+    // Paintery puff softness on the slopes (kept above horizonY+2)
+    for (var px = -20; px <= W + 40; px += 64) {
+      var ph = heightAt(peaks, px);
+      if (ph < 52) continue;
+      window.Brush.puff(c, px, base - ph + 16, 24, body, 0.85);
+    }
+  }
+
+  function snowCaps(c, t, peaks, base, frac, spread) {
+    var alpha = 0.85 + 0.10 * Math.sin(t * 0.6); // slow breathing highlight
+    for (var i = 0; i < peaks.length; i++) {
+      var p = peaks[i];
+      var apexY = base - p.h;
+      var cutY = base - p.h * frac;
+      var hw = p.halfW * (1 - frac) * spread;
+      var j = p.jag * 3;
+
+      // Jagged snow cap triangle at the summit
+      c.save();
+      c.globalAlpha = alpha;
+      c.fillStyle = P.mountain.snow;
+      c.beginPath();
+      c.moveTo(p.cx, apexY);
+      c.lineTo(p.cx - hw, cutY + j);
+      c.lineTo(p.cx - hw * 0.55, cutY - 1.2 * j);
+      c.lineTo(p.cx - hw * 0.1, cutY + j);
+      c.lineTo(p.cx + hw * 0.4, cutY - 0.8 * j);
+      c.lineTo(p.cx + hw, cutY + 1.4 * j);
+      c.closePath();
+      c.fill();
+      c.restore();
+
+      // Soft snow puff on the top
+      window.Brush.puff(c, p.cx, apexY + 8, hw * 0.55 + 6, P.mountain.snow, alpha * 0.7);
+    }
+  }
+
+  window.Painter.registerLayer({
+    id: "mountains",
+    name: "Happy little mountains",
+    draw: function (c, t, reveal, W, H) {
+      var base = L.horizonY;
+
+      // Reveal: left-to-right wipe (same pattern as sky.js)
+      c.save();
+      c.beginPath();
+      c.rect(0, 0, W * reveal, H);
+      c.clip();
+
+      // Far ridge (lit side), then near ridge in front
+      paintRidge(c, FAR_PEAKS, W, base, P.mountain.far, P.mountain.farLit);
+      snowCaps(c, t, FAR_PEAKS, base, 0.30, 1.0);
+
+      paintRidge(c, NEAR_PEAKS, W, base, P.mountain.near, P.shadow);
+      snowCaps(c, t, NEAR_PEAKS, base, 0.38, 1.15); // slightly wider caps
+
+      c.restore();
+    }
+  });
+})();
+</script>
+<script>
+/* Layer 5: MEADOW (Bob Ross "happy little meadow").
+ * Painted grass bank from the horizon down to the bottom edge; covers the
+ * mountain base seam. Reveal = left-to-right wipe. Only animation:
+ * gentle breeze (band rows bob ~2px) + breathing highlight rim.
+ * All positions deterministic (seeded rand at module top-level).
+ */
+(function () {
+  "use strict";
+
+  var P = window.PALETTE;
+  var L = window.LAYOUT;
+  var rand = window.makeRand(5551);
+
+  // Staggered grass-puff rows: far (small) down to near (big).
+  var ROWS = [];
+  var ROW_COUNT = 4;
+  for (var i = 0; i < ROW_COUNT; i++) {
+    var f = i / (ROW_COUNT - 1); // 0 = far row, 1 = near row
+    ROWS.push({
+      y: L.horizonY + 6 + f * (L.H - L.horizonY - 40) * (0.30 + 0.70 * f),
+      r: 7 + f * 14,
+      mix: f * 0.85,       // 0 = far color, 1 = mid color
+      phase: rand() * Math.PI * 2
+    });
+  }
+  var HILLOCKS = [];
+  for (var h = 0; h < 5; h++) {
+    HILLOCKS.push({
+      x: rand() * L.W,
+      yFrac: 0.25 + rand() * 0.65,
+      rx: 40 + rand() * 70,
+      ry: 14 + rand() * 20,
+      mix: 0.3 + rand() * 0.5
+    });
+  }
+
+  function blend(a, b, f) {
+    // hex mix between two #rrggbb colors
+    function ch(s, i) { return parseInt(s.substr(i, 2), 16); }
+    var out = "#";
+    for (var i = 1; i < 7; i += 2) {
+      var v = Math.round(ch(a, i) + (ch(b, i) - ch(a, i)) * f);
+      out += ("0" + v.toString(16)).slice(-2);
+    }
+    return out;
+  }
+
+  window.Painter.registerLayer({
+    id: "meadow",
+    name: "Happy little meadow",
+    draw: function (c, t, reveal, W, H) {
+      // Reveal: left-to-right wipe (same pattern as sky.js / mountains.js)
+      c.save();
+      c.beginPath();
+      c.rect(0, 0, W * reveal, H);
+      c.clip();
+
+      var top = L.horizonY;
+
+      // Ground: vertical gradient far -> mid -> near
+      var g = c.createLinearGradient(0, top, 0, H);
+      g.addColorStop(0, P.meadow.far);
+      g.addColorStop(0.45, P.meadow.mid);
+      g.addColorStop(1, P.meadow.near);
+      c.fillStyle = g;
+      c.fillRect(0, top, W, H - top);
+
+      // Gentle shadow-pool hillocks to break up the flat bank
+      for (var h = 0; h < HILLOCKS.length; h++) {
+        var hil = HILLOCKS[h];
+        var hy = top + hil.yFrac * (H - top);
+        window.Brush.shadow(c, hil.x, hy, hil.rx, hil.ry, blend(P.meadow.mid, P.meadow.near, hil.mix));
+      }
+
+      // Highlight rim just below the horizon (grass catching the light).
+      // Breathing alpha like the mountain snow.
+      var rimAlpha = 0.85 + 0.10 * Math.sin(t * 0.5);
+      c.save();
+      c.globalAlpha = rimAlpha;
+      window.Brush.band(c, 0, W, top + 6, 6, P.meadow.highlight);
+      c.restore();
+
+      // Staggered rows of grass puffs, small (far) to big (near),
+      // with a gentle breeze bob (pure function of t).
+      for (var i = 0; i < ROWS.length; i++) {
+        var row = ROWS[i];
+        var bob = Math.sin(t * 0.7 + row.phase) * 2;
+        window.Brush.band(c, -20, W + 20, row.y + bob, row.r,
+          blend(P.meadow.far, P.meadow.mid, row.mix), 0.9);
+      }
+
+      c.restore();
+    }
+  });
+})();
+</script>
+<script>
+/* Layer 6: PINES (Bob Ross "happy little pine trees").
+ * A belt of pines standing on the meadow between the horizon and the lower
+ * ground: 8 trunks at staggered depths (far = small/high, near = big/low),
+ * each trunk a narrow rounded stroke, foliage = 3 stacked triangle tiers
+ * (dark -> mid -> light) with puffy painterly tips.
+ * Reveal = left-to-right wipe. Only animation: rustling — foliage sways a
+ * tiny angle sin(t*0.9+phase)*0.03 rad about its own base; trunk stays put.
+ * All positions deterministic (seeded rand at module top-level).
+ */
+(function () {
+  "use strict";
+
+  var P = window.PALETTE;
+  var L = window.LAYOUT;
+  var rand = window.makeRand(4242);
+
+  var N = 8;
+  var TREES = [];
+  for (var i = 0; i < N; i++) {
+    var f = i / (N - 1); // 0 = far (high on the band, small), 1 = near (low, big)
+    var x = ((i + 0.5) / N) * L.W + (rand() - 0.5) * (L.W / N) * 0.6;
+    x = Math.max(60, Math.min(L.W - 60, x));
+    // Quadratic spread: far trees cluster near the horizon (perspective).
+    var y = L.horizonY + 24 + f * f * (L.treeBelt.bottom - L.horizonY - 24);
+    var h = 45 + f * 115;
+    // Keep every top at or below treeBelt.top (allowed to poke above the
+    // belt, never above the horizon line itself).
+    var maxH = y - L.treeBelt.top;
+    if (h > maxH) h = maxH;
+    TREES.push({
+      x: x,
+      y: y,
+      h: h,
+      w: h * (0.36 + rand() * 0.10), // crown half-width
+      phase: rand() * Math.PI * 2
+    });
+  }
+
+  // One foliage tier: filled triangle with puffy blobs at apex + corners.
+  function tier(c, x, baseY, halfW, hgt, color) {
+    var topY = baseY - hgt;
+    c.beginPath();
+    c.moveTo(x, topY);
+    c.lineTo(x - halfW, baseY);
+    c.lineTo(x + halfW, baseY);
+    c.closePath();
+    c.fillStyle = color;
+    c.fill();
+    var r = hgt * 0.22 + 3;
+    window.Brush.puff(c, x, topY + r * 0.6, r, color, 0.9);
+    window.Brush.puff(c, x - halfW * 0.82, baseY - hgt * 0.12, r * 0.9, color, 0.7);
+    window.Brush.puff(c, x + halfW * 0.82, baseY - hgt * 0.10, r * 0.9, color, 0.7);
+  }
+
+  function drawTree(c, t, tr) {
+    var trunkH = tr.h * 0.28;
+    var trunkW = Math.max(3, tr.h * 0.045);
+
+    // Soft ground shadow patch
+    window.Brush.shadow(c, tr.x, tr.y + 3, tr.w * 0.7, 5, P.shadow);
+
+    // Trunk: narrow rounded stroke, stays put while foliage ripples.
+    c.save();
+    c.lineCap = "round";
+    c.strokeStyle = P.tree.trunk;
+    c.lineWidth = trunkW;
+    c.beginPath();
+    c.moveTo(tr.x, tr.y);
+    c.lineTo(tr.x, tr.y - trunkH);
+    c.stroke();
+    c.restore();
+
+    // Foliage: sways about its own base, 3 tiers dark (back/bottom) to light (tip)
+    var a = Math.sin(t * 0.9 + tr.phase) * 0.03;
+    c.save();
+    c.translate(tr.x, tr.y);
+    c.rotate(a);
+    c.translate(-tr.x, -tr.y);
+    var fb = tr.y - trunkH * 0.5; // foliage base (half the trunk still shows)
+    var fh = tr.h - trunkH * 0.5;
+    tier(c, tr.x, fb, tr.w, fh * 0.40, P.tree.dark);
+    tier(c, tr.x, fb - fh * 0.30, tr.w * 0.75, fh * 0.40, P.tree.mid);
+    tier(c, tr.x, fb - fh * 0.58, tr.w * 0.50, fh * 0.42, P.tree.light);
+    c.restore();
+  }
+
+  window.Painter.registerLayer({
+    id: "trees",
+    name: "Happy little pine trees",
+    draw: function (c, t, reveal, W, H) {
+      // Reveal: left-to-right wipe (same pattern as sky.js / mountains.js / meadow.js)
+      c.save();
+      c.beginPath();
+      c.rect(0, 0, W * reveal, H);
+      c.clip();
+
+      // Gentle grow-in alpha on top of the wipe
+      c.save();
+      c.globalAlpha = Math.min(1, reveal * 1.6);
+
+      // Paint order: far (small, high) first, near (big, low) last.
+      for (var i = 0; i < TREES.length; i++) {
+        drawTree(c, t, TREES[i]);
+      }
+
+      c.restore();
+      c.restore();
+    }
+  });
+})();
+</script>
+<script>
+/* Layer 7: STREAM (Bob Ross "little brook").
+ * A meandering ribbon of water following LAYOUT.stream.centerAt/widthAt,
+ * sampled stepwise from the horizon down to the bottom edge.
+ * Reveal = left-to-right wipe. Animation = quiet flow: bright centerline
+ * puffs shimmer (alpha 0.6 + 0.25*sin(t*1.3+phase)) and a handful of
+ * sparkle dots drift down the stream (y wraps horizon -> bottom).
+ * All positions/phases deterministic (seeded rand at module top-level).
+ */
+(function () {
+  "use strict";
+
+  var P = window.PALETTE;
+  var L = window.LAYOUT;
+  var rand = window.makeRand(9091);
+
+  // Ribbon slices: one horizontal band per step of y (pure fn of LAYOUT).
+  var STEP = 16;
+  var SLICES = [];
+  for (var y = L.horizonY; y <= L.H; y += STEP) {
+    if (y > L.H) y = L.H;
+    SLICES.push({
+      y: y,
+      x: L.stream.centerAt(y),
+      hw: L.stream.widthAt(y),
+      phase: rand() * Math.PI * 2
+    });
+  }
+
+  // Sparkle dots: deterministic parametric positions, scrolling down the stream.
+  var NS = 5;
+  var SPARKLES = [];
+  for (var i = 0; i < NS; i++) {
+    SPARKLES.push({
+      u: rand(),             // progress offset along the stream, 0..1
+      f: rand() - 0.5,       // lateral offset in half-width units
+      r: 4 + rand() * 5,     // puff radius
+      speed: 0.030 + rand() * 0.025,
+      phase: rand() * Math.PI * 2
+    });
+  }
+
+  window.Painter.registerLayer({
+    id: "stream",
+    name: "A little brook",
+    draw: function (c, t, reveal, W, H) {
+      // Reveal: left-to-right wipe (same pattern as every other layer).
+      c.save();
+      c.beginPath();
+      c.rect(0, 0, W * reveal, H);
+      c.clip();
+
+      // Gentle dab-in alpha on top of the wipe.
+      c.save();
+      c.globalAlpha = Math.min(1, reveal * 1.6);
+
+      // Water ribbon: a rounded band per slice (round line caps, painterly).
+      c.save();
+      c.lineCap = "round";
+      c.lineJoin = "round";
+      c.strokeStyle = P.water.base;
+      for (var i = 0; i < SLICES.length; i++) {
+        var s = SLICES[i];
+        c.lineWidth = s.hw * 2;
+        c.beginPath();
+        c.moveTo(s.x - s.hw + 2, s.y);
+        c.lineTo(s.x + s.hw - 2, s.y);
+        c.stroke();
+      }
+      c.restore();
+
+      // Bright centerline puffs with a slight alpha shimmer.
+      for (var j = 0; j < SLICES.length; j++) {
+        var sl = SLICES[j];
+        var a = 0.6 + 0.25 * Math.sin(t * 1.3 + sl.phase);
+        window.Brush.puff(c, sl.x, sl.y, Math.max(5, sl.hw * 0.40), P.water.bright, a);
+      }
+
+      // Quiet sparkles drifting down the stream (wrap horizon -> bottom).
+      for (var k = 0; k < SPARKLES.length; k++) {
+        var sp = SPARKLES[k];
+        var prog = (sp.u + t * sp.speed) % 1;
+        var sy = L.horizonY + prog * (H - L.horizonY);
+        var sx = L.stream.centerAt(sy) + sp.f * L.stream.widthAt(sy);
+        var sa = 0.55 + 0.30 * Math.sin(t * 2.1 + sp.phase);
+        window.Brush.puff(c, sx, sy, sp.r, P.water.sparkle, sa);
+      }
+
+      c.restore();
+      c.restore();
+    }
+  });
+})();
+</script>
+<script>
+/* Layer 8: FOREGROUND (Bob Ross "giant tree in the foreground").
+ * The bottom band (roughly y = H-170 .. H, in front of everything): one big
+ * hero tree with a swaying crown (fanned branches + clustered puffs,
+ * dark -> mid -> light), a few gray rocks with soft shadows, bright
+ * wildflower dots, and a sparse slow drift of falling leaves / petals.
+ * Reveal = left-to-right wipe. Animation = pure fn of t (crown sway,
+ * wildflower sway, leaf/petal drift). All positions/phases deterministic
+ * (seeded rand at module top-level, seed 7171).
+ */
+(function () {
+  "use strict";
+
+  var P = window.PALETTE;
+  var L = window.LAYOUT;
+  var rand = window.makeRand(7171);
+
+  /* ---------- big hero tree ---------- */
+  var bx = Math.round(L.W * 0.74);
+  var baseY = L.H + 10;                  // trunk base, rooted just off the bottom edge
+  var trunkTop = L.H - 170;
+  var T0 = { x: bx, y: baseY };
+  var T1 = { x: bx - 12, y: L.H - 75 };
+  var T2 = { x: bx + 8, y: trunkTop };
+  var treePhase = rand() * Math.PI * 2;
+
+  function trunkAt(s) {
+    var u = 1 - s;
+    return {
+      x: u * u * T0.x + 2 * u * s * T1.x + s * s * T2.x,
+      y: u * u * T0.y + 2 * u * s * T1.y + s * s * T2.y
+    };
+  }
+
+  // 5 main branches fanning out/up along the upper trunk.
+  var NBR = 5;
+  var BRANCHES = [];
+  for (var b = 0; b < NBR; b++) {
+    var f = (b + 0.5) / NBR;
+    var from = trunkAt(0.42 + f * 0.5);
+    var side = (b % 2 === 0) ? -1 : 1;
+    var reach = 54 + rand() * 42;
+    var to = {
+      x: from.x + side * reach + (rand() - 0.5) * 16,
+      y: L.H - 148 - rand() * 26
+    };
+    var ctrl = {
+      x: (from.x + to.x) / 2 + side * (8 + rand() * 14),
+      y: (from.y + to.y) / 2 + 4
+    };
+    BRANCHES.push({ from: from, to: to, ctrl: ctrl });
+  }
+
+  // Foliage: one clustered puff per branch tip + one crown-center puff.
+  var PUFFS = [];
+  for (var pb = 0; pb < BRANCHES.length; pb++) {
+    PUFFS.push({
+      x: BRANCHES[pb].to.x + (rand() - 0.5) * 12,
+      y: BRANCHES[pb].to.y + 2 + rand() * 6,
+      r: 25 + rand() * 11
+    });
+  }
+  PUFFS.push({ x: bx + 4, y: trunkTop - 2, r: 28 + rand() * 8 });
+  // Highest puffs catch the light: dark (low/back) -> mid -> light (top).
+  PUFFS.sort(function (a, b) { return a.y - b.y; });
+  var PC = [P.tree.light, P.tree.light, P.tree.mid, P.tree.mid, P.tree.dark, P.tree.dark];
+  for (var pc = 0; pc < PUFFS.length; pc++) PUFFS[pc].c = PC[pc] || P.tree.mid;
+
+  /* ---------- rocks ---------- */
+  var RO = [
+    { x: 130 + rand() * 50, y: L.H - 36 - rand() * 12, r: 12 + rand() * 5, c: "#8a8f98" },
+    { x: 245 + rand() * 45, y: L.H - 48 - rand() * 10, r: 14 + rand() * 5, c: "#6d7280" }, // leaning toward the stream edge
+    { x: 330 + rand() * 45, y: L.H - 30 - rand() * 10, r: 10 + rand() * 5, c: "#8a8f98" },
+    { x: 585 + rand() * 55, y: L.H - 56 - rand() * 10, r: 13 + rand() * 5, c: "#6d7280" }
+  ];
+
+  /* ---------- wildflowers ---------- */
+  var FLOWER = [
+    { petal: "#ff5f6d", core: "#8f2b39" },
+    { petal: "#ffd23f", core: "#a37718" },
+    { petal: "#f8f9fa", core: "#98a0ae" },
+    { petal: "#b967ff", core: "#5f2f8f" }
+  ];
+  var NF = 11;
+  var FLOWERS = [];
+  for (var fl = 0; fl < NF; fl++) {
+    var fc = FLOWER[fl % 4];
+    FLOWERS.push({
+      x: (fl + 0.5) / NF * L.W + (rand() - 0.5) * (L.W / NF) * 0.8,
+      y: L.H - 26 - rand() * 135,
+      r: 3 + rand() * 3,
+      petal: fc.petal,
+      core: fc.core,
+      phase: rand() * Math.PI * 2
+    });
+  }
+
+  /* ---------- drifting leaves / petals (sparse, slow) ---------- */
+  var NL = 11;
+  var LEAVES = [];
+  var fallTop = L.H - 200;
+  var fallBot = L.H + 14;
+  var fallSpan = fallBot - fallTop;
+  for (var lv = 0; lv < NL; lv++) {
+    LEAVES.push({
+      u: rand(),
+      x: bx + (rand() - 0.5) * 300,
+      r: 2.5 + rand() * 2,
+      speed: 0.016 + rand() * 0.018,
+      phase: rand() * Math.PI * 2,
+      color: rand() > 0.5 ? P.tree.light : "#f2a9c6"
+    });
+  }
+
+  window.Painter.registerLayer({
+    id: "foreground",
+    name: "Giant tree, rocks & wildflowers",
+    draw: function (c, t, reveal, W, H) {
+      // Reveal: left-to-right wipe (same pattern as every other layer).
+      c.save();
+      c.beginPath();
+      c.rect(0, 0, W * reveal, H);
+      c.clip();
+
+      // Gentle dab-in alpha on top of the wipe.
+      c.save();
+      c.globalAlpha = Math.min(1, reveal * 1.6);
+
+      // ---- big tree ----
+      // Soft ground shadow under the hero tree.
+      window.Brush.shadow(c, bx + 6, H - 4, 100, 9, P.shadow);
+
+      // Trunk: thick rounded quadratic stroke, always planted.
+      c.save();
+      c.lineCap = "round";
+      c.strokeStyle = P.tree.trunk;
+      c.lineWidth = 17;
+      c.beginPath();
+      c.moveTo(T0.x, T0.y);
+      c.quadraticCurveTo(T1.x, T1.y, T2.x, T2.y);
+      c.stroke();
+      c.restore();
+
+      // Crown (branches + puffs) sways as one unit about the trunk base.
+      var a = Math.sin(t * 0.6 + treePhase) * 0.02;
+      c.save();
+      c.translate(bx, H);
+      c.rotate(a);
+      c.translate(-bx, -H);
+
+      c.save();
+      c.lineCap = "round";
+      c.lineJoin = "round";
+      c.strokeStyle = P.tree.trunk;
+      c.lineWidth = 7;
+      for (var b = 0; b < BRANCHES.length; b++) {
+        var br = BRANCHES[b];
+        c.beginPath();
+        c.moveTo(br.from.x, br.from.y);
+        c.quadraticCurveTo(br.ctrl.x, br.ctrl.y, br.to.x, br.to.y);
+        c.stroke();
+      }
+      c.restore();
+
+      for (var p = 0; p < PUFFS.length; p++) {
+        var pf = PUFFS[p];
+        window.Brush.puff(c, pf.x, pf.y, pf.r, pf.c, 0.95);
+      }
+
+      c.restore();
+
+      // ---- rocks (flattened puffs + soft shadow, a couple near the stream edge) ----
+      for (var rk = 0; rk < RO.length; rk++) {
+        var ro = RO[rk];
+        window.Brush.shadow(c, ro.x, ro.y + ro.r * 0.32, ro.r * 1.25, ro.r * 0.34, P.shadow);
+        window.Brush.puff(c, ro.x, ro.y, ro.r, ro.c, 1);
+        window.Brush.puff(c, ro.x - ro.r * 0.18, ro.y - ro.r * 0.24, ro.r * 0.55, "#a7adb8", 0.8);
+      }
+
+      // ---- wildflowers (tiny sway, bright dot + darker center) ----
+      for (var fl = 0; fl < FLOWERS.length; fl++) {
+        var fw = FLOWERS[fl];
+        var fx = fw.x + Math.sin(t * 0.8 + fw.phase) * 1.6;
+        window.Brush.puff(c, fx, fw.y, fw.r, fw.petal, 0.95);
+        c.save();
+        c.globalAlpha = Math.min(1, reveal * 1.6) * 0.9;
+        c.fillStyle = fw.core;
+        c.beginPath();
+        c.arc(fx, fw.y, Math.max(1, fw.r * 0.35), 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      }
+
+      // ---- drifting leaves / petals: fall (y increases with t), sway, wrap in-band ----
+      for (var li = 0; li < LEAVES.length; li++) {
+        var lv2 = LEAVES[li];
+        var prog = (lv2.u + t * lv2.speed) % 1;
+        var ly = fallTop + prog * fallSpan;
+        var lx2 = lv2.x + Math.sin(t * 0.8 + lv2.phase) * 8;
+        var la = 0.45 + 0.25 * Math.sin(t * 1.4 + lv2.phase);
+        window.Brush.puff(c, lx2, ly, lv2.r, lv2.color, la);
+      }
+
+      c.restore();
+      c.restore();
+    }
+  });
+})();
+</script>
+<script>
+/* Boot: starts the painter engine once the DOM is ready.
+ * Do NOT put draw logic here — this is only the start call.
+ * Layer registration happens inside each js/layers/*.js file, in script order.
+ */
+(function () {
+  "use strict";
+  function boot() {
+    var canvas = document.getElementById("scene");
+    if (!canvas) {
+      console.error("Painter: no #scene canvas found in index.html");
+      return;
+    }
+    window.Painter.start(canvas, {
+      totalDelay: 0.6,   // beat of "starting to paint"
+      perLayer: 0.85,    // gap between each layer start
+      revealDur: 1.6     // seconds each layer takes to paint in
+    });
+  }
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot);
+  } else {
+    boot();
+  }
+})();
+</script>
 </body>
 </html>
