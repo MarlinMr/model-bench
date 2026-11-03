@@ -558,27 +558,36 @@ function paintStream(t0,dur){
   mark(t0,"water",g=>{
     g.save();g.clip(streamP);
     const gg=g.createLinearGradient(0,560,0,800);
-    gg.addColorStop(0,rgba(mix(P.lakeMid,P.white,.15),1));gg.addColorStop(1,rgba(mix(P.lakeNear,P.meadowDk,.35),1));
+    gg.addColorStop(0,rgba(mix(P.lakeMid,P.white,.15),1));
+    gg.addColorStop(1,rgba(mix(P.lakeNear,P.meadowDk,.35),1));
     g.fillStyle=gg;g.fillRect(80,560,420,260);g.restore();
   },360,600,"wash");
+
   const ks=knifeS([P.white,P.warmWhite,mix(P.lakeFar,P.white,.4)]);
   let idx=0;
   for(let j=0;j<110;j++){
     const u=rnd(),x=lerp(330,236,u)+rr(-58,58),y=lerp(592,796,u);
     if(!inWater(x,y))continue;
-    mark(t0+dur*(idx++/110),"water",g=>put(g,ks,x,y,rr(20,70),rr(4,10),rr(-.5,.5),rr(.3,.85)),x,y,"knife");
+    const w=rr(20,70),h=rr(4,10),rot=rr(-.5,.5),a=rr(.3,.85);
+    mark(t0+dur*(idx++/110),"water",g=>put(g,ks,x,y,w,h,rot,a),x,y,"knife");
   }
-  mark(t0+dur*.95,"water",g=>{g.save();g.clip(streamP);g.strokeStyle="rgba(46,58,40,.5)";g.lineWidth=7;g.stroke(streamP);g.restore()},330,650,"knife");
+
+  mark(t0+dur*.95,"water",g=>{
+    g.save();g.clip(streamP);g.strokeStyle="rgba(46,58,40,.5)";g.lineWidth=7;
+    g.stroke(streamP);g.restore();
+  },330,650,"knife");
+
   for(let j=0;j<34;j++){
     const u=rr(0,.3),x=lerp(330,240,u)+rr(-52,52),y=lerp(590,640,u);
     if(!inWater(x,y))continue;
     LV.foam.push({x:x,y:y,w:rr(16,46),h:rr(4,9),ph:rr(0,6.28),sp:rr(1.2,3),appear:t0+dur*.55,grow:400});
   }
+
   [[300,662,26,17],[372,716,20,13],[196,760,30,19],[430,600,16,10]].forEach((r,i)=>{
     const hl=dotS(P.rockLt);
+    const x=r[0],y=r[1],rx=r[2],ry=r[3],tilt=rr(-.2,.2);   // ← hoisted
     mark(t0+dur*(.5+i*.1),"fg",g=>{
-      const x=r[0],y=r[1],rx=r[2],ry=r[3];
-      g.fillStyle=rgba(P.rock,1);g.beginPath();g.ellipse(x,y,rx,ry,rr(-.2,.2),0,7);g.fill();
+      g.fillStyle=rgba(P.rock,1);g.beginPath();g.ellipse(x,y,rx,ry,tilt,0,7);g.fill();
       g.fillStyle=rgba(P.rockDk,.7);g.beginPath();g.ellipse(x+rx*.15,y+ry*.3,rx*.8,ry*.7,0,0,7);g.fill();
       put(g,hl,x-rx*.3,y-ry*.5,rx*1.1,ry*1.1,0,.75);
       g.strokeStyle="rgba(226,232,224,.3)";g.lineWidth=2;
@@ -720,6 +729,7 @@ function paintSignature(t0,dur){
   }
 }
 function build(){
+  rnd=mulberry32(20240517);
   for(const s of steps){
     switch(s.id){
       case "tone":paintTone(s.t0,s.dur);break;
@@ -762,7 +772,7 @@ function drawClouds(g){
     const x=((c.x+T*c.sp*wind*7)%(W+380)+(W+380))%(W+380)-190;
     for(const b of c.blobs){
       const bk=clamp((k-(b.i/c.blobs.length)*.75)/.35,0,1);if(bk<=0)continue;
-      const bx=c.x===null?0:x+b.bx*c.sc,by=c.y+b.by*c.sc,sc=bk;
+      const bx=x+b.bx*c.sc,by=c.y+b.by*c.sc,sc=bk;
       put(g,S_CLOUD_D,bx,by+b.rh*.22,b.rw*1.5*sc,b.rh*.95*sc,rr(-.02,.02),.5);
       put(g,S_CLOUD_L,bx,by-b.rh*.1,b.rw*1.62*sc,b.rh*1.15*sc,rr(-.03,.03),.72);
     }
